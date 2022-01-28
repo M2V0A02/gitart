@@ -64,17 +64,17 @@ class TrayIcon:
         response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
         if response.status_code == 200:
             user = json.loads(response.text)
-            self.login = QAction(user['full_name'] + "(" + user["login"] + ")")
+            logout = self.logout
+            self.login = QAction('Выйти из ' + user['full_name'] + "(" + user["login"] + ")")
+            self.login.triggered.connect(logout)
             menu.addAction(self.login)
             self.tray.setToolTip(user['full_name'] + "(" + user["login"] + ")")
         else:
-            self.auth = QAction("Необходима авторизация через токен")
+            self.auth = QAction("Авторизация через токен")
+            setting = self.setting
+            self.auth.triggered.connect(setting)
             menu.addAction(self.auth)
             self.tray.setToolTip("Необходима авторизация через токен")
-        self.settings = QAction("Настройки")
-        setting = self.setting
-        self.settings.triggered.connect(setting)
-        menu.addAction(self.settings)
         self.quit = QAction("Завершить программу")
         self.quit.triggered.connect(self.app.quit)
         menu.addAction(self.quit)
@@ -82,6 +82,12 @@ class TrayIcon:
 
     def setting(self):
         self.win_setting = Setting(self)
+
+    def logout(self):
+        f = open('conf.yaml', 'w')
+        f.write('token: ')
+        f.close()
+        self.create_menu()
 
 
 def main():
