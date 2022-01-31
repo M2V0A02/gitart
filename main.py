@@ -48,29 +48,46 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.tray.setVisible(True)
+        self.login = QAction()
+        self.auth = QAction()
+        self.quit = QAction()
         self.create_menu()
+
+    @staticmethod
+    def download_icon(token):
+        response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
+        resource = requests.get(json.loads(response.text)['avatar_url'])
+        out = open("img/" + str(json.loads(response.text)['id']) + ".jpg", "wb")
+        out.write(resource.content)
+        out.close()
+
+    def set_icon(self, icon):
+        self.icon = QIcon(icon)
+        self.tray.setIcon(self.icon)
 
     def create_menu(self):
         menu = QMenu()
         try:
             with open('conf.yaml') as fh:
                 read_data = yaml.load(fh, Loader=yaml.FullLoader)
-        except:
+        except IOError:
             open('conf.yaml', 'w')
         try:
             token = read_data.get("token", "")
-        except:
+        except AttributeError:
             token = ""
         response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
         if response.status_code == 200:
             user = json.loads(response.text)
+            self.download_icon(token)
+            self.set_icon("img/" + str(user['id']) + ".jpg")
             logout = self.logout
             self.login = QAction('Выйти из ' + user['full_name'] + "(" + user["login"] + ")")
             self.login.triggered.connect(logout)
             menu.addAction(self.login)
             self.tray.setToolTip(user['full_name'] + "(" + user["login"] + ")")
         else:
-            self.auth = QAction("Авторизация через токен")
+            self.auth = QAction("Настройки")
             setting = self.setting
             self.auth.triggered.connect(setting)
             menu.addAction(self.auth)
@@ -81,12 +98,12 @@ class TrayIcon:
         self.tray.setContextMenu(menu)
 
     def setting(self):
-        self.win_setting = Setting(self)
+        Setting(self)
 
     def logout(self):
-        f = open('conf.yaml', 'w')
-        f.write('token: ')
-        f.close()
+        with open('conf.yaml', 'w') as f_obj:
+            f_obj.write('token: ')
+        self.set_icon('icon.png')
         self.create_menu()
 
 
