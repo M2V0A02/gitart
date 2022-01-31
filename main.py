@@ -66,11 +66,11 @@ class TrayIcon:
         try:
             with open('conf.yaml') as fh:
                 read_data = yaml.load(fh, Loader=yaml.FullLoader)
-        except:
+        except IOError:
             open('conf.yaml', 'w')
         try:
             token = read_data.get("token", "")
-        except:
+        except AttributeError:
             token = ""
         response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
         if response.status_code == 200:
