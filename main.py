@@ -45,8 +45,12 @@ class TrayIcon:
     def __init__(self, icon, app):
         self.app = app
         self.tray = QSystemTrayIcon()
-        self.set_icon(icon)
+        self.icon = QIcon(icon)
+        self.tray.setIcon(self.icon)
         self.tray.setVisible(True)
+        self.login = QAction()
+        self.auth = QAction()
+        self.quit = QAction()
         self.create_menu()
 
     @staticmethod
@@ -94,7 +98,7 @@ class TrayIcon:
         self.tray.setContextMenu(menu)
 
     def setting(self):
-        self.win_setting = Setting(self)
+        Setting(self)
 
     def logout(self):
         with open('conf.yaml', 'w') as f_obj:
