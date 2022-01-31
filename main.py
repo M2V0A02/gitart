@@ -14,7 +14,16 @@ class Hint:
         self.label_hint = QLabel(hint)
         self.layout.addWidget(self.label_hint)
         self.window.setLayout(self.layout)
+        self.show()
+
+    def show(self):
         self.window.show()
+        screen_geometry = QApplication.desktop().availableGeometry()
+        screen_size = (screen_geometry.width(), screen_geometry.height())
+        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
+        x = screen_size[0] - window_size[0] - 50
+        y = screen_size[1] - window_size[1] - 10
+        self.window.move(x, y)
 
 
 class Setting:
@@ -78,14 +87,19 @@ class TrayIcon:
         self.login = QAction()
         self.auth = QAction()
         self.quit = QAction()
+        self.hint = ''
         self.create_menu()
 
     @staticmethod
-    def download_icon(token):
+    def download_icon(self, token):
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
         server = read_data.get('server', 'server300:1080')
-        response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
+        try:
+            response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
+        except requests.exceptions.ConnectionError:
+            self.hint = Hint('Такой сервер не существуют, использован дефолтный')
+            response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
         out = open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb")
         out.write(resource.content)
@@ -108,11 +122,15 @@ class TrayIcon:
         else:
             token = read_data.get("token", "")
             server = read_data.get("server", "server300:1080")
-        response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
+        try:
+            response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
+        except requests.exceptions.ConnectionError:
+            self.hint = Hint('Такой сервер не существуют, использован дефолтный')
+            response = requests.get("http://{}/api/v1/user?access_token={}".format("server300:1080", token))
         if response.status_code == 200:
             user = json.loads(response.text)
             self.download_icon(token)
-            self.set_icon("img/" + str(user['id']) + ".jpg")
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
             logout = self.logout
             self.login = QAction('Выйти из {}({})'.format(user['full_name'], user["login"]))
             self.login.triggered.connect(logout)
@@ -134,11 +152,10 @@ class TrayIcon:
 
     def logout(self):
         with open('conf.yaml', 'w') as f_obj:
-            #f_obj.write('token: ')
             to_yaml = {'token': '', 'server': 'server300:1080'}
             yaml.dump(to_yaml, f_obj)
         self.set_icon('icon.png')
-        #self.create_menu()
+        self.create_menu()
 
 
 def main():
