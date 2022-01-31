@@ -50,6 +50,18 @@ class TrayIcon:
         self.tray.setVisible(True)
         self.create_menu()
 
+    @staticmethod
+    def download_icon(token):
+        response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
+        resource = requests.get(json.loads(response.text)['avatar_url'])
+        out = open("img/" + str(json.loads(response.text)['id']) + ".jpg", "wb")
+        out.write(resource.content)
+        out.close()
+
+    def set_icon(self, icon):
+        self.icon = QIcon(icon)
+        self.tray.setIcon(self.icon)
+
     def create_menu(self):
         menu = QMenu()
         try:
@@ -64,13 +76,15 @@ class TrayIcon:
         response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
         if response.status_code == 200:
             user = json.loads(response.text)
+            self.download_icon(token)
+            self.set_icon("img/" + str(user['id']) + ".jpg")
             logout = self.logout
             self.login = QAction('Выйти из ' + user['full_name'] + "(" + user["login"] + ")")
             self.login.triggered.connect(logout)
             menu.addAction(self.login)
             self.tray.setToolTip(user['full_name'] + "(" + user["login"] + ")")
         else:
-            self.auth = QAction("Авторизация через токен")
+            self.auth = QAction("Настройки")
             setting = self.setting
             self.auth.triggered.connect(setting)
             menu.addAction(self.auth)
@@ -87,6 +101,7 @@ class TrayIcon:
         f = open('conf.yaml', 'w')
         f.write('token: ')
         f.close()
+        self.set_icon('icon.png')
         self.create_menu()
 
 
