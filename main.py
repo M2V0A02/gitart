@@ -33,9 +33,8 @@ class Setting:
         self.window.move(x, y)
 
     def save_token(self):
-        f = open('conf.yaml', 'w')
-        f.write('token: ' + self.edit.text())
-        f.close()
+        with open('conf.yaml', 'w') as f_obj:
+            f_obj.write('token: ' + self.edit.text())
         self.tray_icon.create_menu()
         self.window.hide()
 
@@ -58,7 +57,7 @@ class TrayIcon:
     def download_icon(token):
         response = requests.get("http://server300:1080/api/v1/user?access_token={}".format(token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
-        out = open("img/" + str(json.loads(response.text)['id']) + ".jpg", "wb")
+        out = open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb")
         out.write(resource.content)
         out.close()
 
