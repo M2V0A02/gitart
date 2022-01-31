@@ -6,6 +6,17 @@ import requests
 import json
 
 
+class Hint:
+
+    def __init__(self, hint):
+        self.window = QWidget()
+        self.layout = QVBoxLayout()
+        self.label_hint = QLabel(hint)
+        self.layout.addWidget(self.label_hint)
+        self.window.setLayout(self.layout)
+        self.window.show()
+
+
 class Setting:
 
     def __init__(self, tray_icon):
