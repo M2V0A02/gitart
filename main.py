@@ -52,6 +52,7 @@ class TrayIcon:
         self.auth = QAction()
         self.quit = QAction()
         self.create_menu()
+        self.setting = ''
 
     @staticmethod
     def download_icon(token):
@@ -98,7 +99,7 @@ class TrayIcon:
         self.tray.setContextMenu(menu)
 
     def setting(self):
-        Setting(self)
+        self.setting = Setting(self)
 
     def logout(self):
         with open('conf.yaml', 'w') as f_obj:
