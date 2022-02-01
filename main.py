@@ -27,6 +27,10 @@ class Setting:
         save_token = self.save_setting
         self.button.clicked.connect(save_token)
         self.layout.addWidget(self.button)
+        self.button_close = QPushButton("Закрыть окно")
+        close_app = self.window.hide
+        self.button_close.clicked.connect(close_app)
+        self.layout.addWidget(self.button_close)
         self.window.setLayout(self.layout)
         self.show()
 
