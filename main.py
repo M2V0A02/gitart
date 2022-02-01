@@ -17,6 +17,7 @@ class Hint:
         self.label_hint = QLabel(hint)
         self.layout.addWidget(self.label_hint)
         self.window.setLayout(self.layout)
+        logging.info(hint)
         self.show()
 
     def show(self):
