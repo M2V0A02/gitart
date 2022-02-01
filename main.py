@@ -140,6 +140,10 @@ class TrayIcon:
             self.login = QAction('Выйти из {}({})'.format(user['full_name'], user["login"]))
             self.login.triggered.connect(logout)
             menu.addAction(self.login)
+            self.auth = QAction("Настройки")
+            def_setting = self.create_settings_window
+            self.auth.triggered.connect(def_setting)
+            menu.addAction(self.auth)
             self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         else:
             self.auth = QAction("Настройки")
