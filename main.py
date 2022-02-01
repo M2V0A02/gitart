@@ -4,6 +4,7 @@ import sys
 import yaml
 import requests
 import json
+import os
 
 
 class Hint:
@@ -89,8 +90,8 @@ class TrayIcon:
         self.quit = QAction()
         self.hint = ''
         self.create_menu()
+        self.setting = ''
 
-    @staticmethod
     def download_icon(self, token):
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
@@ -101,6 +102,8 @@ class TrayIcon:
             self.hint = Hint('Такой сервер не существуют, использован дефолтный')
             response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
+        if not(os.path.exists('img')):
+            os.mkdir('img')
         out = open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb")
         out.write(resource.content)
         out.close()
