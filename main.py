@@ -86,19 +86,33 @@ class TrayIcon:
         self.quit = QAction()
         self.name_user = QAction()
         self.hint = ''
-        self.create_menu()
         self.setting = ''
+        if not(os.path.exists('conf.yaml')):
+            self.initiation_config()
+        self.create_menu()
+
+    def initiation_config(self):
+        to_yaml = {"server": '', "token": '', "default_server": "server300:1080"}
+        with open('conf.yaml', 'w') as f_obj:
+            yaml.dump(to_yaml, f_obj)
 
     def download_icon(self, token):
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        server = read_data.get('server', 'server300:1080')
+        server = read_data.get('server', '')
+        if server == '':
+            server = read_data.get('default_server', '')
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
             logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
-            response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
+            try:
+                response = requests.get("http://{}/api/v1/user?access_token={}".format(read_data['default_server'], token))
+            except requests.exceptions.ConnectionError:
+                logging.error('Сервер по умолчанию удален, несуществует или недействительный')
+                self.hint = Hint('сервер по-умолчанию не действителен')
+                return
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
             os.mkdir('img')
@@ -111,24 +125,25 @@ class TrayIcon:
 
     def create_menu(self):
         menu = QMenu()
-        if not (os.path.exists('conf.yaml')):
-            open('conf.yaml', 'w')
-            read_data = None
-        else:
-            with open('conf.yaml') as fh:
-                read_data = yaml.load(fh, Loader=yaml.FullLoader)
-        if read_data is None:
-            token = ""
-            server = "server300:1080"
-        else:
-            token = read_data.get("token", "")
-            server = read_data.get("server", "server300:1080")
+        with open('conf.yaml') as fh:
+            read_data = yaml.load(fh, Loader=yaml.FullLoader)
+        default_server = read_data.get("default_server", "")
+        token = read_data.get("token", "")
+        server = read_data.get("server", "")
+        if server == "":
+            server = default_server
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
-            logging.error('Введен не существующий сервер {}'.format(server))
+            logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
-            response = requests.get("http://{}/api/v1/user?access_token={}".format("server300:1080", token))
+            try:
+                response = requests.get(
+                    "http://{}/api/v1/user?access_token={}".format(read_data['default_server'], token))
+            except requests.exceptions.ConnectionError:
+                logging.error('Сервер по умолчанию удален, несуществует или недействительный')
+                self.hint = Hint('сервер, по-умолчанию не работает')
+                return
         if response.status_code == 200:
             user = json.loads(response.text)
             self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
