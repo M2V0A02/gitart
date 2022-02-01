@@ -5,6 +5,8 @@ import yaml
 import requests
 import json
 import os
+import logging
+import datetime
 
 
 class Hint:
@@ -99,6 +101,7 @@ class TrayIcon:
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
+            logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован дефолтный')
             response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
@@ -127,6 +130,7 @@ class TrayIcon:
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
+            logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован дефолтный')
             response = requests.get("http://{}/api/v1/user?access_token={}".format("server300:1080", token))
         if response.status_code == 200:
@@ -137,6 +141,10 @@ class TrayIcon:
             self.login = QAction('Выйти из {}({})'.format(user['full_name'], user["login"]))
             self.login.triggered.connect(logout)
             menu.addAction(self.login)
+            self.auth = QAction("Настройки")
+            def_setting = self.create_settings_window
+            self.auth.triggered.connect(def_setting)
+            menu.addAction(self.auth)
             self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         else:
             self.auth = QAction("Настройки")
@@ -161,6 +169,11 @@ class TrayIcon:
 
 
 def main():
+    if not (os.path.exists('logs')):
+        os.mkdir('logs')
+    current_date = datetime.datetime.today().strftime('%d-%m-%Y')
+    logging.basicConfig(filename="logs/{}.log".format(current_date), level=logging.INFO)
+    logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
@@ -169,4 +182,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
