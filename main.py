@@ -5,6 +5,7 @@ import yaml
 import requests
 import json
 import os
+import logging
 
 
 class Hint:
@@ -99,6 +100,7 @@ class TrayIcon:
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
+            logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован дефолтный')
             response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
@@ -127,6 +129,7 @@ class TrayIcon:
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
+            logging.error('Введен не существующий сервер" {}'.format(server))
             self.hint = Hint('Такой сервер не существуют, использован дефолтный')
             response = requests.get("http://{}/api/v1/user?access_token={}".format("server300:1080", token))
         if response.status_code == 200:
@@ -161,6 +164,10 @@ class TrayIcon:
 
 
 def main():
+    if not (os.path.exists('logs')):
+        os.mkdir('logs')
+    logging.basicConfig(filename="logs/log.log", level=logging.INFO)
+    logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
@@ -169,4 +176,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
