@@ -157,14 +157,14 @@ class TrayIcon:
         with open('conf.yaml', 'w') as f_obj:
             to_yaml = {'token': '', 'server': 'server300:1080'}
             yaml.dump(to_yaml, f_obj)
-        self.set_icon('icon.png')
+        self.set_icon('img/icon.png')
         self.create_menu()
 
 
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    tray_icon = TrayIcon('icon.png', app)
+    tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
 
 
