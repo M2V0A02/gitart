@@ -9,27 +9,6 @@ import logging
 import datetime
 
 
-class Hint:
-
-    def __init__(self, hint):
-        self.window = QWidget()
-        self.layout = QVBoxLayout()
-        self.label_hint = QLabel(hint)
-        self.layout.addWidget(self.label_hint)
-        self.window.setLayout(self.layout)
-        logging.info(hint)
-        self.show()
-
-    def show(self):
-        self.window.show()
-        screen_geometry = QApplication.desktop().availableGeometry()
-        screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
-        x = screen_size[0] - window_size[0] - 50
-        y = screen_size[1] - window_size[1] - 10
-        self.window.move(x, y)
-
-
 class Setting:
 
     def __init__(self, tray_icon):
@@ -106,12 +85,15 @@ class TrayIcon:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
             logging.error('Введен не существующий сервер" {}'.format(server))
-            self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
+            msg = QMessageBox()
+            msg.setText('Этот сервер не работает, использован сервер, по-умолчанию')
+            msg.exec()
             try:
                 response = requests.get("http://{}/api/v1/user?access_token={}".format(read_data['default_server'], token))
             except requests.exceptions.ConnectionError:
                 logging.error('Сервер по умолчанию удален, несуществует или недействительный')
-                self.hint = Hint('сервер по-умолчанию не действителен')
+                msg.setText('Сервер по-умолчанию не работает')
+                msg.exec()
                 return
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
@@ -136,13 +118,16 @@ class TrayIcon:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
             logging.error('Введен не существующий сервер" {}'.format(server))
-            self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
+            msg = QMessageBox()
+            msg.setText('Этот сервер не работает, использован сервер, по-умолчанию')
+            msg.exec()
             try:
                 response = requests.get(
                     "http://{}/api/v1/user?access_token={}".format(read_data['default_server'], token))
             except requests.exceptions.ConnectionError:
                 logging.error('Сервер по умолчанию удален, несуществует или недействительный')
-                self.hint = Hint('сервер, по-умолчанию не работает')
+                msg.setText('сервер, по-умолчанию не работает')
+                msg.exec()
                 return
         if response.status_code == 200:
             user = json.loads(response.text)
