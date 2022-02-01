@@ -36,15 +36,15 @@ class Setting:
         self.tray_icon = tray_icon
         self.window = QWidget()
         self.layout = QVBoxLayout()
-        self.label_token = QLabel("Вставьте ваш токен")
+        self.label_token = QLabel("Укажите ваш токен")
         self.layout.addWidget(self.label_token)
         self.edit_token = QLineEdit()
         self.edit_server = QLineEdit()
         self.layout.addWidget(self.edit_token)
-        self.label_server = QLabel("Вставьте ваш сервер, если он не дефолтный")
+        self.label_server = QLabel("Укажите сервер, если он отличается от сервера, по-умолчанию")
         self.layout.addWidget(self.label_server)
         self.layout.addWidget(self.edit_server)
-        self.button = QPushButton("Сохранить токен")
+        self.button = QPushButton("Сохранить настройки")
         save_token = self.save_setting
         self.button.clicked.connect(save_token)
         self.layout.addWidget(self.button)
@@ -62,18 +62,11 @@ class Setting:
 
     def save_setting(self):
         with open('conf.yaml') as f_obj:
-            read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        if read_data is None:
-            token = ''
-            server = "server300:1080"
-        else:
-            token = read_data.get("token", '')
-            server = read_data.get("server", "server300:1080")
+            to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         if self.edit_token.text() != '':
-            token = self.edit_token.text()
+            to_yaml['token'] = self.edit_token.text()
         if self.edit_server.text() != '':
-            server = self.edit_server.text()
-        to_yaml = {"token": token, "server": server}
+            to_yaml['server'] = self.edit_server.text()
         with open('conf.yaml', 'w') as f_obj:
             yaml.dump(to_yaml, f_obj)
         self.tray_icon.create_menu()
@@ -91,6 +84,7 @@ class TrayIcon:
         self.login = QAction()
         self.auth = QAction()
         self.quit = QAction()
+        self.name_user = QAction()
         self.hint = ''
         self.create_menu()
         self.setting = ''
@@ -103,7 +97,7 @@ class TrayIcon:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
             logging.error('Введен не существующий сервер" {}'.format(server))
-            self.hint = Hint('Такой сервер не существуют, использован дефолтный')
+            self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
             response = requests.get("http://{}/api/v1/user?access_token={}".format('server300:1080', token))
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
@@ -117,8 +111,9 @@ class TrayIcon:
 
     def create_menu(self):
         menu = QMenu()
-        if not (os.path.exists('img')):
+        if not (os.path.exists('conf.yaml')):
             open('conf.yaml', 'w')
+            read_data = None
         else:
             with open('conf.yaml') as fh:
                 read_data = yaml.load(fh, Loader=yaml.FullLoader)
@@ -131,15 +126,18 @@ class TrayIcon:
         try:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(server, token))
         except requests.exceptions.ConnectionError:
-            logging.error('Введен не существующий сервер" {}'.format(server))
-            self.hint = Hint('Такой сервер не существуют, использован дефолтный')
+            logging.error('Введен не существующий сервер {}'.format(server))
+            self.hint = Hint('Такой сервер не существуют, использован сервер, по-умолчанию')
             response = requests.get("http://{}/api/v1/user?access_token={}".format("server300:1080", token))
         if response.status_code == 200:
             user = json.loads(response.text)
+            self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
+            self.name_user.setEnabled(False)
+            menu.addAction(self.name_user)
             self.download_icon(token)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
             logout = self.logout
-            self.login = QAction('Выйти из {}({})'.format(user['full_name'], user["login"]))
+            self.login = QAction('Выйти из {}'.format(user["login"]))
             self.login.triggered.connect(logout)
             menu.addAction(self.login)
             self.auth = QAction("Настройки")
@@ -162,8 +160,10 @@ class TrayIcon:
         self.setting = Setting(self)
 
     def logout(self):
+        with open('conf.yaml') as f_obj:
+            to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         with open('conf.yaml', 'w') as f_obj:
-            to_yaml = {'token': '', 'server': 'server300:1080'}
+            to_yaml['token'] = ''
             yaml.dump(to_yaml, f_obj)
         self.set_icon('img/icon.png')
         self.create_menu()
