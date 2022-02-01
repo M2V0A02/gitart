@@ -104,9 +104,8 @@ class TrayIcon:
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
             os.mkdir('img')
-        out = open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb")
-        out.write(resource.content)
-        out.close()
+        with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
+            out.write(resource.content)
 
     def set_icon(self, icon):
         self.icon = QIcon(icon)
@@ -114,11 +113,11 @@ class TrayIcon:
 
     def create_menu(self):
         menu = QMenu()
-        try:
+        if not (os.path.exists('img')):
+            open('conf.yaml', 'w')
+        else:
             with open('conf.yaml') as fh:
                 read_data = yaml.load(fh, Loader=yaml.FullLoader)
-        except IOError:
-            open('conf.yaml', 'w')
         if read_data is None:
             token = ""
             server = "server300:1080"
