@@ -6,6 +6,7 @@ import requests
 import json
 import os
 import logging
+import datetime
 
 
 class Hint:
@@ -170,7 +171,8 @@ class TrayIcon:
 def main():
     if not (os.path.exists('logs')):
         os.mkdir('logs')
-    logging.basicConfig(filename="logs/log.log", level=logging.INFO)
+    current_date = datetime.datetime.today().strftime('%d-%m-%Y')
+    logging.basicConfig(filename="logs/{}.log".format(current_date), level=logging.INFO)
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
