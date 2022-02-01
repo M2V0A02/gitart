@@ -1,4 +1,4 @@
 .idea
 setup.py
 conf.yaml
-img/**
+img/*.jpg
