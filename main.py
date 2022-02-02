@@ -23,7 +23,7 @@ class Api:
         except requests.exceptions.ConnectionError:
             logging.error('Введен не существующий сервер" {}'.format(self.server))
             msg = QMessageBox()
-            msg.setText('Этот сервер не работает, использован сервер, по-умолчанию')
+            msg.setText('Этот сервер не работает')
             msg.exec()
 
     def set_access_token(self, access_token):
@@ -108,7 +108,7 @@ class Setting:
         to_yaml['server'] = self.edit_server.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         self.tray_icon.config.save_settings(to_yaml)
-        self.tray_icon.create_menu()
+        self.tray_icon.constructor_menu()
         self.window.hide()
 
 
@@ -125,12 +125,13 @@ class TrayIcon:
         self.auth = QAction()
         self.quit = QAction()
         self.name_user = QAction()
+        self.menu = QMenu()
         self.hint = ''
         self.setting = ''
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data['server'], read_data['token'])
-        self.create_menu()
+        self.constructor_menu()
 
     def download_icon(self):
         logging.debug("Скачивание изображения из интернета. {}".format(datetime.datetime.now()))
@@ -146,38 +147,37 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
-    def create_menu(self):
+    def authentication_successful(self, response):
+        logging.debug("Токен доступа действителен. {}".format(datetime.datetime.now()))
+        user = json.loads(response.text)
+        self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
+        self.name_user.setEnabled(False)
+        self.menu.addAction(self.name_user)
+        self.download_icon()
+        self.set_icon("img/{}.jpg".format(str(user['id'])))
+        logout = self.logout
+        self.login = QAction('Выйти из {}'.format(user["login"]))
+        self.login.triggered.connect(logout)
+        self.menu.addAction(self.login)
+        self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
+
+    def constructor_menu(self):
         logging.debug("Создание контекстного меню для TrayIcon. {}".format(datetime.datetime.now()))
-        menu = QMenu()
+        self.menu = QMenu()
         response = self.api.get_user()
         if response.status_code == 200:
-            logging.debug("Токен доступа действителен. {}".format(datetime.datetime.now()))
-            user = json.loads(response.text)
-            self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
-            self.name_user.setEnabled(False)
-            menu.addAction(self.name_user)
-            self.download_icon()
-            self.set_icon("img/{}.jpg".format(str(user['id'])))
-            logout = self.logout
-            self.login = QAction('Выйти из {}'.format(user["login"]))
-            self.login.triggered.connect(logout)
-            menu.addAction(self.login)
-            self.auth = QAction("Настройки")
-            def_setting = self.create_settings_window
-            self.auth.triggered.connect(def_setting)
-            menu.addAction(self.auth)
-            self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
+            self.authentication_successful(response)
         else:
             logging.debug("Токена доступа нет или он недействителен. {}".format(datetime.datetime.now()))
-            self.auth = QAction("Настройки")
-            def_setting = self.create_settings_window
-            self.auth.triggered.connect(def_setting)
-            menu.addAction(self.auth)
             self.tray.setToolTip("Необходима авторизация через токен")
+        self.auth = QAction("Настройки")
+        def_setting = self.create_settings_window
+        self.auth.triggered.connect(def_setting)
+        self.menu.addAction(self.auth)
         self.quit = QAction("Завершить программу")
         self.quit.triggered.connect(self.app.quit)
-        menu.addAction(self.quit)
-        self.tray.setContextMenu(menu)
+        self.menu.addAction(self.quit)
+        self.tray.setContextMenu(self.menu)
 
     def create_settings_window(self):
         logging.debug("Показ окна настроек {}".format(datetime.datetime.now()))
@@ -190,7 +190,7 @@ class TrayIcon:
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
-        self.create_menu()
+        self.constructor_menu()
 
 
 def main():
