@@ -105,6 +105,7 @@ class Setting:
         to_yaml = self.tray_icon.config.get_settings()
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
+
         to_yaml['server'] = self.edit_server.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         self.tray_icon.config.save_settings(to_yaml)
