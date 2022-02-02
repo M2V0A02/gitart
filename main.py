@@ -21,9 +21,9 @@ class Api:
             response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             return response
         except requests.exceptions.ConnectionError:
-            logging.error('Введен не существующий сервер" {}'.format(self.server))
+            logging.error('Соединение не установленно имя сервера - {}'.format(self.server))
             msg = QMessageBox()
-            msg.setText('Этот сервер не работает')
+            msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
 
     def set_access_token(self, access_token):
@@ -105,9 +105,15 @@ class Setting:
         to_yaml = self.tray_icon.config.get_settings()
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
-
         to_yaml['server'] = self.edit_server.text()
         self.tray_icon.api.set_server(to_yaml['server'])
+        if self.tray_icon.api.get_user() is None:
+            logging.debug("response - пустой в save_settings")
+        else:
+            if not(self.tray_icon.api.get_user().status_code == 200):
+                msg = QMessageBox()
+                msg.setText('Авторизация не удалась')
+                msg.exec()
         self.tray_icon.config.save_settings(to_yaml)
         self.tray_icon.constructor_menu()
         self.window.hide()
@@ -166,10 +172,13 @@ class TrayIcon:
         logging.debug("Создание контекстного меню для TrayIcon. {}".format(datetime.datetime.now()))
         self.menu = QMenu()
         response = self.api.get_user()
-        if response.status_code == 200:
-            self.authentication_successful(response)
+        if response is None:
+            logging.debug("response - пустой")
         else:
-            logging.debug("Токена доступа нет или он недействителен. {}".format(datetime.datetime.now()))
+            if response.status_code == 200:
+                self.authentication_successful(response)
+            else:
+                logging.debug("Токена доступа нет или он недействителен. {}".format(datetime.datetime.now()))
             self.tray.setToolTip("Необходима авторизация через токен")
         self.auth = QAction("Настройки")
         def_setting = self.create_settings_window
