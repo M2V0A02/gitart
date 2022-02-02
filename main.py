@@ -11,11 +11,13 @@ import datetime
 
 class Api:
     def __init__(self, server, access_token):
+        logging.debug("Создание экземляра класса Api. {}".format(datetime.datetime.now()))
         self.server = server
         self.access_token = access_token
 
     def get_user(self):
         try:
+            logging.debug("Обращение к Api для получение информацию о своей учетной записи. {}".format(datetime.datetime.now()))
             response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             return response
         except requests.exceptions.ConnectionError:
@@ -25,22 +27,26 @@ class Api:
             msg.exec()
 
     def set_access_token(self, access_token):
+        logging.debug("Перезапись токена доступа. {}".format(datetime.datetime.now()))
         self.access_token = access_token
 
     def set_server(self, server):
+        logging.debug("Перезапись адреса сервера. {}".format(datetime.datetime.now()))
         self.server = server
 
 
 class Config:
 
     def __init__(self, name):
+        logging.debug("Создание экземпляра, класса конфиг. {}".format(datetime.datetime.now()))
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": '', "token": '', "default_server": "server300:1080"}
+            to_yaml = {"server": 'server300:1080', "token": ''}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
     def save_settings(self, dict_setting):
+        logging.debug("Перезапись  настроек в конфигурационном файле. {}".format(datetime.datetime.now()))
         with open(self.name) as f_obj:
             to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         for key, value in dict_setting.items():
@@ -49,6 +55,7 @@ class Config:
             yaml.dump(to_yaml, f_obj)
 
     def get_settings(self):
+        logging.debug("Получение данных из конфиг файла. {}".format(datetime.datetime.now()))
         with open(self.name) as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
         return read_data
@@ -57,6 +64,7 @@ class Config:
 class Setting:
 
     def __init__(self, tray_icon):
+        logging.debug("Создание экземляра класса Setting. {}".format(datetime.datetime.now()))
         self.tray_icon = tray_icon
         self.window = QWidget()
         self.layout = QVBoxLayout()
@@ -83,6 +91,7 @@ class Setting:
         self.show()
 
     def show(self):
+        logging.debug("Показ окна настроек. {}".format(datetime.datetime.now()))
         self.window.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
@@ -92,6 +101,7 @@ class Setting:
         self.window.move(x, y)
 
     def save_settings(self):
+        logging.debug("Передача новых настроек в конфигурационный файл. {}".format(datetime.datetime.now()))
         to_yaml = self.tray_icon.config.get_settings()
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
@@ -105,6 +115,7 @@ class Setting:
 class TrayIcon:
 
     def __init__(self, icon, app):
+        logging.debug("Создание экземпляра класса TrayIcon {}".format(datetime.datetime.now()))
         self.app = app
         self.tray = QSystemTrayIcon()
         self.icon = QIcon(icon)
@@ -122,6 +133,7 @@ class TrayIcon:
         self.create_menu()
 
     def download_icon(self):
+        logging.debug("Скачивание изображения из интернета. {}".format(datetime.datetime.now()))
         response = self.api.get_user()
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
@@ -130,13 +142,16 @@ class TrayIcon:
             out.write(resource.content)
 
     def set_icon(self, icon):
+        logging.debug("Установление изображение для TrayIcon. {}".format(datetime.datetime.now()))
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
     def create_menu(self):
+        logging.debug("Создание контекстного меню для TrayIcon. {}".format(datetime.datetime.now()))
         menu = QMenu()
         response = self.api.get_user()
         if response.status_code == 200:
+            logging.debug("Токен доступа действителен. {}".format(datetime.datetime.now()))
             user = json.loads(response.text)
             self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
             self.name_user.setEnabled(False)
@@ -153,6 +168,7 @@ class TrayIcon:
             menu.addAction(self.auth)
             self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         else:
+            logging.debug("Токена доступа нет или он недействителен. {}".format(datetime.datetime.now()))
             self.auth = QAction("Настройки")
             def_setting = self.create_settings_window
             self.auth.triggered.connect(def_setting)
@@ -164,9 +180,11 @@ class TrayIcon:
         self.tray.setContextMenu(menu)
 
     def create_settings_window(self):
+        logging.debug("Показ окна настроек {}".format(datetime.datetime.now()))
         self.setting = Setting(self)
 
     def logout(self):
+        logging.info("Выход из учетной записи")
         to_yaml = self.config.get_settings()
         to_yaml['token'] = ''
         self.api.set_access_token(to_yaml['token'])
@@ -179,8 +197,8 @@ def main():
     if not (os.path.exists('logs')):
         os.mkdir('logs')
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
-    logging.basicConfig(filename="logs/{}.log".format(current_date), level=logging.INFO)
-    logging.info("Запуск программы")
+    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG)
+    logging.info("Запуск программы {}".format(datetime.datetime.now()))
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
