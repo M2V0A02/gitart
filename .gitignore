@@ -3,3 +3,4 @@ setup.py
 conf.yaml
 img/*.jpg
 logs
+__pycache__
