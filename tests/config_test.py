@@ -13,7 +13,7 @@ class TestConfig():
         assert os.path.exists(self.name) == True
         os.remove(self.name)
 
-        
+
 '''
     def test_get_settings_settings_received(self):
         self.name = 'test.yaml'
