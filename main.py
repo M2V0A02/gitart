@@ -27,9 +27,9 @@ class Api:
             msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
         except requests.exceptions.InvalidURL:
-            logging.error('Url недействителен - {}'.format("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token)))
+            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token)))
             msg = QMessageBox()
-            msg.setText('Url  недействителен - {}.'.format("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token)))
+            msg.setText('Server - пустой')
             msg.exec()
 
     def set_access_token(self, access_token):
