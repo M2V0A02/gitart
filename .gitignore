@@ -4,3 +4,4 @@ conf.yaml
 img/*.jpg
 logs
 __pycache__
+tests/__pycache__
