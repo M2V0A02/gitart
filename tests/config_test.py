@@ -6,15 +6,13 @@ sys.path.append('../')
 import main
 
 
-class TestConfig():
+class TestConfig:
     def test_init_create_config_config_create_successful(self):
         self.name = 'test.yaml'
         config = main.Config(self.name)
         assert os.path.exists(self.name) == True
         os.remove(self.name)
 
-
-'''
     def test_get_settings_settings_received(self):
         self.name = 'test.yaml'
         config = main.Config(self.name)
@@ -22,7 +20,7 @@ class TestConfig():
         with open(self.name) as f_obj:
             from_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         os.remove(self.name)
-        self.assertEqual(from_yaml_test, from_yaml)
+        assert from_yaml_test == from_yaml
 
     def test_save_setting_setting_saved(self):
         self.name = 'test.yaml'
@@ -31,7 +29,7 @@ class TestConfig():
         with open(self.name) as f_obj:
             from_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         os.remove(self.name)
-        self.assertEqual([from_yaml['server'], from_yaml['token']], ['server300:1090', 'qwerty'])
+        assert [from_yaml['server'], from_yaml['token']] == ['server300:1090', 'qwerty']
 
     def test_init_file_overwrite_file_is_not_overwritten(self):
         self.name = 'test.yaml'
@@ -41,8 +39,4 @@ class TestConfig():
         with open(self.name) as f_obj:
             from_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         os.remove(self.name)
-        self.assertEqual([from_yaml['server'], from_yaml['token']], ['server300:1090', 'qwerty'])
-
-if __name__ == '__main__':
-    unittest.main()
-'''
+        assert [from_yaml['server'], from_yaml['token']] == ['server300:1090', 'qwerty']
