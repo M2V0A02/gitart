@@ -205,6 +205,7 @@ class TrayIcon:
 
 def crash_script(error_type, value, tb):
     logging.critical(" {}   Название ошибки - {}, значение - {}, tb - {}".format(datetime.datetime.now().strftime('%H:%M:%S'), error_type, value, tb))
+    sys.__excepthook__(error_type, value, tb)
 
 
 def main():
