@@ -36,6 +36,12 @@ class Api:
         logging.debug("   {}   Api: Перезапись токена доступа.".format(datetime.datetime.now().strftime('%H:%M:%S')))
         self.access_token = access_token
 
+    def get_access_token(self):
+        return self.access_token
+
+    def get_server(self):
+        return self.server
+    
     def set_server(self, server):
         logging.debug("   {}   Api: Перезапись адреса сервера.".format(datetime.datetime.now().strftime('%H:%M:%S')))
         self.server = server
