@@ -13,3 +13,7 @@ class TestApi:
         user_json = json.loads(user.text)
         assert user_json['id'] == 2
 
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 6e2ea5c5f2fc60ad92160315fe757dacd563090e
