@@ -6,13 +6,16 @@ sys.path.append('../')
 import main
 
 
+# Проверяю что создается конфиг файл
 def test_init_create_config_config_create_successful():
     name = 'test.yaml'
+    os.remove(name)
     config = main.Config(name)
     assert os.path.exists(name)
     os.remove(name)
 
 
+# Проверяю что данные полученные с помощью функции get_settings() у класса конфиг выдает все параметры правильно
 def test_get_settings_settings_received():
     name = 'test.yaml'
     config = main.Config(name)
@@ -23,6 +26,7 @@ def test_get_settings_settings_received():
     assert from_yaml_test == from_yaml
 
 
+# Проверяю что данные сохраняются в конфиг файл
 def test_save_setting_setting_saved():
     name = 'test.yaml'
     config = main.Config(name)
@@ -33,6 +37,7 @@ def test_save_setting_setting_saved():
     assert [from_yaml['server'], from_yaml['token']] == ['server300:1090', 'qwerty']
 
 
+# Проверяю что файл не перезаписывается, если существует
 def test_init_file_overwrite_file_is_not_overwritten():
     name = 'test.yaml'
     with open(name, 'w') as f_obj:
