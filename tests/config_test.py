@@ -10,7 +10,7 @@ class TestConfig:
     def test_init_create_config_config_create_successful(self):
         self.name = 'test.yaml'
         config = main.Config(self.name)
-        assert os.path.exists(self.name) == True
+        assert os.path.exists(self.name)
         os.remove(self.name)
 
     def test_get_settings_settings_received(self):
