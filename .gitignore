@@ -8,3 +8,4 @@ tests/__pycache__
 tests/pytest.exe
 tests/cover.txt
 tests/.coverage
+tests/.pytest_cache
