@@ -6,14 +6,7 @@ sys.path.append('../')
 import main
 
 
-def test__init__creation_successfully():
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
-    tray_icon = main.TrayIcon('../img/icon.png', app)
-    setting = main.Setting(tray_icon)
-    assert True
-
-
+# Проверяю что edit_token и edit_server записываются в конфиг файл
 def test_save_settings_settings_saved():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
