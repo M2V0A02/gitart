@@ -1,3 +1,4 @@
+import traceback
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -25,6 +26,11 @@ class Api:
             msg = QMessageBox()
             msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
+        except requests.exceptions.InvalidURL:
+            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token)))
+            msg = QMessageBox()
+            msg.setText('Server - пустой')
+            msg.exec()
 
     def set_access_token(self, access_token):
         logging.debug("   {}   Api: Перезапись токена доступа.".format(datetime.datetime.now().strftime('%H:%M:%S')))
@@ -41,7 +47,7 @@ class Config:
         logging.debug("   {}   Создание экземпляра класса - конфиг.".format(datetime.datetime.now().strftime('%H:%M:%S')))
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": 'server300:1080', "token": ''}
+            to_yaml = {"server": '', "token": ''}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
@@ -204,7 +210,8 @@ class TrayIcon:
 
 
 def crash_script(error_type, value, tb):
-    logging.critical(" {}   Название ошибки - {}, значение - {}, tb - {}".format(datetime.datetime.now().strftime('%H:%M:%S'), error_type, value, tb))
+    logging.critical(" {}   Название ошибки - {}, значение - {}, tb - {}".format(datetime.datetime.now().strftime('%H:%M:%S'), error_type, value, traceback.extract_tb(tb)))
+    sys.__excepthook__(error_type, value, tb)
 
 
 def main():
