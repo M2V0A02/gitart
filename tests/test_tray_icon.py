@@ -7,12 +7,7 @@ sys.path.append('../')
 import main
 
 
-def test__init__tray_icon_creation_successfully():
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)
-    tray_icon = main.TrayIcon('../img/icon.png', app)
-
-
+# провер€ю что функци€ logout очищает токен
 def test__logout_logout_successful():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
