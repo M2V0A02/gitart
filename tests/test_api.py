@@ -13,4 +13,3 @@ class TestApi:
         user_json = json.loads(user.text)
         assert user_json['id'] == 2
 
-    
