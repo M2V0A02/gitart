@@ -41,7 +41,7 @@ class Api:
 
     def get_server(self):
         return self.server
-    
+
     def set_server(self, server):
         logging.debug("   {}   Api: Перезапись адреса сервера.".format(datetime.datetime.now().strftime('%H:%M:%S')))
         self.server = server

@@ -6,6 +6,9 @@ import main
 
 
 class TestApi:
+    def test__init__creation_successfully(self):
+        main.Api('server300:1080', '9e8eab4fad52b94c1f57217e2cdfeea5a99229d7')
+        assert  True
 
     def test_get_user_user_received(self):
         api = main.Api('server300:1080', '9e8eab4fad52b94c1f57217e2cdfeea5a99229d7')
@@ -13,7 +16,9 @@ class TestApi:
         user_json = json.loads(user.text)
         assert user_json['id'] == 2
 
-<<<<<<< HEAD
-=======
+    def test_set_server_server_received(self):
+        api = main.Api('server300:1080', '9e8eab4fad52b94c1f57217e2cdfeea5a99229d7')
+        api.set_server('server300:1090')
+        assert  api.get_server() == 'server300:1090'
+
     
->>>>>>> 6e2ea5c5f2fc60ad92160315fe757dacd563090e
