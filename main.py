@@ -8,13 +8,18 @@ import json
 import os
 import logging
 import datetime
+import threading
 
 
 class Api:
+
     def __init__(self, server, access_token):
         logging.debug("Создание экземляра класса - Api.")
         self.server = server
         self.access_token = access_token
+
+    def get_notifications(self):
+        return requests.get("http://server300:1080/api/v1/notifications?access_token={}".format(self.access_token))
 
     def get_user(self):
         try:
@@ -85,7 +90,7 @@ class Setting:
         self.edit_token = QLineEdit()
         self.edit_server = QLineEdit()
         self.layout.addWidget(self.edit_token)
-        self.label_server = QLabel("Укажите сервер, если он отличается от сервера по-умолчанию")
+        self.label_server = QLabel("Укажите сервер")
         self.layout.addWidget(self.label_server)
         self.layout.addWidget(self.edit_server)
         self.button = QPushButton("Сохранить настройки")
@@ -137,6 +142,7 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.tray.setVisible(True)
@@ -150,7 +156,17 @@ class TrayIcon:
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data['server'], read_data['token'])
+        self.timer_animation = threading.Timer(2.0, self.animation)
+
+        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
         self.constructor_menu()
+
+    def subscribe_notification(self):
+        response = self.api.get_notifications()
+        data = json.loads(response.text)
+        if len(data) != 0 and not(self.timer_animation.is_alive()):
+            self.timer_animation.start()
+        self.timer_subscribe_notifications.run()
 
     def download_icon(self):
         logging.debug("Скачивание изображения из интернета.")
@@ -161,8 +177,18 @@ class TrayIcon:
         with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
             out.write(resource.content)
 
+    def animation(self):
+        if self.name_icon == "img/notification.png":
+            response = self.api.get_user()
+            user = json.loads(response.text)
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
+        else:
+            self.set_icon('img/notification.png')
+        self.timer_animation.run()
+
     def set_icon(self, icon):
         logging.debug("Установление изображение для TrayIcon.")
+        self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
@@ -179,6 +205,10 @@ class TrayIcon:
         self.login.triggered.connect(logout)
         self.menu.addAction(self.login)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
+        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
+        if not(self.timer_subscribe_notifications.is_alive()):
+            self.timer_subscribe_notifications.start()
+        #self.timer_subscribe_notifications.cancel()
 
     def constructor_menu(self):
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
@@ -212,6 +242,8 @@ class TrayIcon:
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
+        self.timer_subscribe_notifications.cancel()
+        self.timer_animation.cancel()
         self.constructor_menu()
 
 
@@ -224,7 +256,6 @@ def main():
     sys.excepthook = crash_script
     if not (os.path.exists('logs')):
         os.mkdir('logs')
-
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
