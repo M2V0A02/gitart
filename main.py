@@ -58,7 +58,7 @@ class Config:
         logging.debug("Создание экземпляра класса - конфиг.")
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": '', "token": ''}
+            to_yaml = {"server": '', "token": '', "delay_notification": "5"}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
@@ -93,6 +93,10 @@ class Setting:
         self.label_server = QLabel("Укажите сервер")
         self.layout.addWidget(self.label_server)
         self.layout.addWidget(self.edit_server)
+        self.label_delay_notification = QLabel("Укажите задержки между оповещениями.")
+        self.layout.addWidget(self.label_delay_notification)
+        self.edit_delay_notification = QLineEdit()
+        self.layout.addWidget(self.edit_delay_notification)
         self.button = QPushButton("Сохранить настройки")
         save_token = self.save_settings
         self.button.clicked.connect(save_token)
@@ -105,6 +109,7 @@ class Setting:
         read_data = self.tray_icon.config.get_settings()
         self.edit_token.setText(read_data['token'])
         self.edit_server.setText(read_data['server'])
+        self.edit_delay_notification.setText(read_data['delay_notification'])
         self.show()
 
     def show(self):
@@ -123,6 +128,7 @@ class Setting:
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.text()
+        to_yaml['delay_notification'] = self.edit_delay_notification.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -205,7 +211,9 @@ class TrayIcon:
         self.login.triggered.connect(logout)
         self.menu.addAction(self.login)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
-        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
+        with open('conf.yaml') as f_obj:
+            read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        self.timer_subscribe_notifications = threading.Timer(int(read_data['delay_notification']), self.subscribe_notification)
         if not(self.timer_subscribe_notifications.is_alive()):
             self.timer_subscribe_notifications.start()
         #self.timer_subscribe_notifications.cancel()
