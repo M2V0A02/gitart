@@ -17,6 +17,10 @@ class Notification:
         self.window = QWidget()
         self.layout = QVBoxLayout()
         self.notification = []
+        if len(data) == 0:
+            label = QLabel('Новых сообщений нет')
+            self.layout.addWidget(label)
+            self.notification.append(label)
         for i in range(len(data)):
             label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
             self.layout.addWidget(label)
@@ -26,7 +30,6 @@ class Notification:
             self.layout.addWidget(button)
             self.notification.append(label)
             self.notification.append(button)
-            self.notification.append(open_notification)
         self.window.setLayout(self.layout)
         self.window.show()
 
