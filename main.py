@@ -175,13 +175,10 @@ class TrayIcon:
         self.app = app
         self.tray = QSystemTrayIcon()
         self.name_icon = icon
+        self.menu_items = []
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.tray.setVisible(True)
-        self.login = QAction()
-        self.auth = QAction()
-        self.quit = QAction()
-        self.name_user = QAction()
         self.menu = QMenu()
         self.hint = ''
         self.setting = ''
@@ -196,8 +193,8 @@ class TrayIcon:
     def subscribe_notification(self):
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
+        self.timer_animation = threading.Timer(2.0, self.animation)
         if len(self.data) != 0 and not(self.timer_animation.is_alive()):
-            self.constructor_menu()
             self.timer_animation.start()
         self.timer_subscribe_notifications.run()
 
@@ -217,6 +214,11 @@ class TrayIcon:
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
+        if len(self.data) == 0:
+            response = self.api.get_user()
+            user = json.loads(response.text)
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
+            self.timer_animation.cancel()
         self.timer_animation.run()
 
     def show_notification(self):
@@ -231,19 +233,22 @@ class TrayIcon:
     def authentication_successful(self, response):
         logging.debug("TrayIcon: Токен доступа действителен.")
         user = json.loads(response.text)
-        self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
-        self.name_user.setEnabled(False)
-        self.menu.addAction(self.name_user)
+        name_user = QAction("{}({})".format(user['full_name'], user["login"]))
+        name_user.setEnabled(False)
+        self.menu.addAction(name_user)
+        self.menu_items.append(name_user)
         self.download_icon()
         self.set_icon("img/{}.jpg".format(str(user['id'])))
         logout = self.logout
-        self.login = QAction('Выйти из {}'.format(user["login"]))
-        self.login.triggered.connect(logout)
-        self.menu.addAction(self.login)
+        login = QAction('Выйти из {}'.format(user["login"]))
+        login.triggered.connect(logout)
+        self.menu.addAction(login)
+        self.menu_items.append(login)
         show_notification = self.show_notification
-        self.notification = QAction('Новое сообщение')
-        self.notification.triggered.connect(show_notification)
-        self.menu.addAction(self.notification)
+        notification = QAction('Новые сообщение')
+        notification.triggered.connect(show_notification)
+        self.menu_items.append(notification)
+        self.menu.addAction(notification)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
@@ -252,7 +257,9 @@ class TrayIcon:
             self.timer_subscribe_notifications.start()
 
     def constructor_menu(self):
+        self.menu_items = []
         self.menu = QMenu()
+        print(self.menu)
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
         response = self.api.get_user()
         if response is None:
@@ -263,13 +270,15 @@ class TrayIcon:
             else:
                 logging.debug("TrayIcon: Токена доступа нет или он недействителен.")
                 self.tray.setToolTip("Необходима авторизация через токен")
-        self.auth = QAction("Настройки")
+        auth = QAction("Настройки")
         def_setting = self.create_settings_window
-        self.auth.triggered.connect(def_setting)
-        self.menu.addAction(self.auth)
-        self.quit = QAction("Завершить программу")
-        self.quit.triggered.connect(self.app.quit)
-        self.menu.addAction(self.quit)
+        auth.triggered.connect(def_setting)
+        self.menu.addAction(auth)
+        self.menu_items.append(auth)
+        quit_programm = QAction("Завершить программу")
+        quit_programm.triggered.connect(self.app.quit)
+        self.menu.addAction(quit_programm)
+        self.menu_items.append(quit_programm)
         self.tray.setContextMenu(self.menu)
 
     def create_settings_window(self):
