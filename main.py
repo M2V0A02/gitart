@@ -155,7 +155,8 @@ class Setting:
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.text()
-        to_yaml['delay_notification'] = self.edit_delay_notification.text()
+        if (self.edit_delay_notification.text().isdigit()) and int(self.edit_delay_notification.text()) > 0:
+            to_yaml['delay_notification'] = self.edit_delay_notification.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -192,7 +193,7 @@ class TrayIcon:
         self.constructor_menu()
 
     def subscribe_notification(self):
-        logging("Проверка новых сообщений")
+        logging.debug("Проверка новых сообщений")
         response = self.api.get_user()
         if response is None:
             logging.debug("Закончить проверку новых сообщений")
