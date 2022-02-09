@@ -9,6 +9,32 @@ import os
 import logging
 import datetime
 import threading
+import webbrowser
+
+
+class Notification:
+    def __init__(self, data):
+        self.window = QWidget()
+        self.layout = QVBoxLayout()
+        self.notification = []
+        for i in range(len(data)):
+            label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
+            self.layout.addWidget(label)
+            open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
+            button = QPushButton("Сохранить настройки")
+            button.clicked.connect(open_notification)
+            self.layout.addWidget(button)
+            self.notification.append(label)
+            self.notification.append(button)
+            self.notification.append(open_notification)
+        self.window.setLayout(self.layout)
+        self.window.show()
+
+    def open_notification(self, url):
+        print(url)
+        def myfunc():
+            webbrowser.open_new(url)
+        return myfunc
 
 
 class Api:
@@ -159,18 +185,19 @@ class TrayIcon:
         self.menu = QMenu()
         self.hint = ''
         self.setting = ''
+        self.data = []
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data['server'], read_data['token'])
         self.timer_animation = threading.Timer(2.0, self.animation)
-
         self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
         self.constructor_menu()
 
     def subscribe_notification(self):
         response = self.api.get_notifications()
-        data = json.loads(response.text)
-        if len(data) != 0 and not(self.timer_animation.is_alive()):
+        self.data = json.loads(response.text)
+        if len(self.data) != 0 and not(self.timer_animation.is_alive()):
+            self.constructor_menu()
             self.timer_animation.start()
         self.timer_subscribe_notifications.run()
 
@@ -192,6 +219,9 @@ class TrayIcon:
             self.set_icon('img/notification.png')
         self.timer_animation.run()
 
+    def show_notification(self):
+        self.window_notification = Notification(self.data)
+
     def set_icon(self, icon):
         logging.debug("Установление изображение для TrayIcon.")
         self.name_icon = icon
@@ -210,17 +240,20 @@ class TrayIcon:
         self.login = QAction('Выйти из {}'.format(user["login"]))
         self.login.triggered.connect(logout)
         self.menu.addAction(self.login)
+        show_notification = self.show_notification
+        self.notification = QAction('Новое сообщение')
+        self.notification.triggered.connect(show_notification)
+        self.menu.addAction(self.notification)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
         self.timer_subscribe_notifications = threading.Timer(int(read_data['delay_notification']), self.subscribe_notification)
         if not(self.timer_subscribe_notifications.is_alive()):
             self.timer_subscribe_notifications.start()
-        #self.timer_subscribe_notifications.cancel()
 
     def constructor_menu(self):
-        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
         self.menu = QMenu()
+        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
         response = self.api.get_user()
         if response is None:
             logging.debug("response - пустой")
