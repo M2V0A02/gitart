@@ -21,7 +21,7 @@ class Notification:
             label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
             self.layout.addWidget(label)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Сохранить настройки")
+            button = QPushButton("Перейти в репозиторий - {}".format(data[i]['repository']['name']))
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
             self.notification.append(label)
@@ -31,7 +31,6 @@ class Notification:
         self.window.show()
 
     def open_notification(self, url):
-        print(url)
         def myfunc():
             webbrowser.open_new(url)
         return myfunc
@@ -263,7 +262,6 @@ class TrayIcon:
     def constructor_menu(self):
         self.menu_items = []
         self.menu = QMenu()
-        print(self.menu)
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
         response = self.api.get_user()
         if response is None:
