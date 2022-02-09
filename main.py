@@ -191,6 +191,10 @@ class TrayIcon:
         self.constructor_menu()
 
     def subscribe_notification(self):
+        response = self.api.get_user()
+        if response is None:
+            self.timer_subscribe_notifications.cancel()
+            exit()
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
         self.timer_animation = threading.Timer(2.0, self.animation)
@@ -292,8 +296,6 @@ class TrayIcon:
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
-        self.timer_subscribe_notifications.cancel()
-        self.timer_animation.cancel()
         self.constructor_menu()
 
 
