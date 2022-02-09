@@ -8,13 +8,43 @@ import json
 import os
 import logging
 import datetime
+import threading
+import webbrowser
+
+
+class Notification:
+    def __init__(self, data):
+        self.window = QWidget()
+        self.layout = QVBoxLayout()
+        self.notification = []
+        for i in range(len(data)):
+            label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
+            self.layout.addWidget(label)
+            open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
+            button = QPushButton("Перейти в репозиторий - {}".format(data[i]['repository']['name']))
+            button.clicked.connect(open_notification)
+            self.layout.addWidget(button)
+            self.notification.append(label)
+            self.notification.append(button)
+            self.notification.append(open_notification)
+        self.window.setLayout(self.layout)
+        self.window.show()
+
+    def open_notification(self, url):
+        def myfunc():
+            webbrowser.open_new(url)
+        return myfunc
 
 
 class Api:
+
     def __init__(self, server, access_token):
         logging.debug("Создание экземляра класса - Api.")
         self.server = server
         self.access_token = access_token
+
+    def get_notifications(self):
+        return requests.get("http://server300:1080/api/v1/notifications?access_token={}".format(self.access_token))
 
     def get_user(self):
         try:
@@ -53,7 +83,7 @@ class Config:
         logging.debug("Создание экземпляра класса - конфиг.")
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": '', "token": ''}
+            to_yaml = {"server": '', "token": '', "delay_notification": "5"}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
@@ -85,9 +115,13 @@ class Setting:
         self.edit_token = QLineEdit()
         self.edit_server = QLineEdit()
         self.layout.addWidget(self.edit_token)
-        self.label_server = QLabel("Укажите сервер, если он отличается от сервера по-умолчанию")
+        self.label_server = QLabel("Укажите сервер")
         self.layout.addWidget(self.label_server)
         self.layout.addWidget(self.edit_server)
+        self.label_delay_notification = QLabel("Укажите задержки между оповещениями.")
+        self.layout.addWidget(self.label_delay_notification)
+        self.edit_delay_notification = QLineEdit()
+        self.layout.addWidget(self.edit_delay_notification)
         self.button = QPushButton("Сохранить настройки")
         save_token = self.save_settings
         self.button.clicked.connect(save_token)
@@ -100,6 +134,7 @@ class Setting:
         read_data = self.tray_icon.config.get_settings()
         self.edit_token.setText(read_data['token'])
         self.edit_server.setText(read_data['server'])
+        self.edit_delay_notification.setText(read_data['delay_notification'])
         self.show()
 
     def show(self):
@@ -118,6 +153,7 @@ class Setting:
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.text()
+        to_yaml['delay_notification'] = self.edit_delay_notification.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -137,20 +173,33 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.name_icon = icon
+        self.menu_items = []
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.tray.setVisible(True)
-        self.login = QAction()
-        self.auth = QAction()
-        self.quit = QAction()
-        self.name_user = QAction()
         self.menu = QMenu()
         self.hint = ''
         self.setting = ''
+        self.data = []
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data['server'], read_data['token'])
+        self.timer_animation = threading.Timer(2.0, self.animation)
+        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
         self.constructor_menu()
+
+    def subscribe_notification(self):
+        response = self.api.get_user()
+        if response is None:
+            self.timer_subscribe_notifications.cancel()
+            exit()
+        response = self.api.get_notifications()
+        self.data = json.loads(response.text)
+        self.timer_animation = threading.Timer(2.0, self.animation)
+        if len(self.data) != 0 and not(self.timer_animation.is_alive()):
+            self.timer_animation.start()
+        self.timer_subscribe_notifications.run()
 
     def download_icon(self):
         logging.debug("Скачивание изображения из интернета.")
@@ -161,28 +210,59 @@ class TrayIcon:
         with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
             out.write(resource.content)
 
+    def animation(self):
+        if self.name_icon == "img/notification.png":
+            response = self.api.get_user()
+            user = json.loads(response.text)
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
+        else:
+            self.set_icon('img/notification.png')
+        if len(self.data) == 0:
+            response = self.api.get_user()
+            user = json.loads(response.text)
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
+            self.timer_animation.cancel()
+        self.timer_animation.run()
+
+    def show_notification(self):
+        self.window_notification = Notification(self.data)
+
     def set_icon(self, icon):
         logging.debug("Установление изображение для TrayIcon.")
+        self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
         logging.debug("TrayIcon: Токен доступа действителен.")
         user = json.loads(response.text)
-        self.name_user = QAction("{}({})".format(user['full_name'], user["login"]))
-        self.name_user.setEnabled(False)
-        self.menu.addAction(self.name_user)
+        name_user = QAction("{}({})".format(user['full_name'], user["login"]))
+        name_user.setEnabled(False)
+        self.menu.addAction(name_user)
+        self.menu_items.append(name_user)
         self.download_icon()
         self.set_icon("img/{}.jpg".format(str(user['id'])))
         logout = self.logout
-        self.login = QAction('Выйти из {}'.format(user["login"]))
-        self.login.triggered.connect(logout)
-        self.menu.addAction(self.login)
+        login = QAction('Выйти из {}'.format(user["login"]))
+        login.triggered.connect(logout)
+        self.menu.addAction(login)
+        self.menu_items.append(login)
+        show_notification = self.show_notification
+        notification = QAction('Новые сообщение')
+        notification.triggered.connect(show_notification)
+        self.menu_items.append(notification)
+        self.menu.addAction(notification)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
+        with open('conf.yaml') as f_obj:
+            read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        self.timer_subscribe_notifications = threading.Timer(int(read_data['delay_notification']), self.subscribe_notification)
+        if not(self.timer_subscribe_notifications.is_alive()):
+            self.timer_subscribe_notifications.start()
 
     def constructor_menu(self):
-        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
+        self.menu_items = []
         self.menu = QMenu()
+        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
         response = self.api.get_user()
         if response is None:
             logging.debug("response - пустой")
@@ -192,13 +272,15 @@ class TrayIcon:
             else:
                 logging.debug("TrayIcon: Токена доступа нет или он недействителен.")
                 self.tray.setToolTip("Необходима авторизация через токен")
-        self.auth = QAction("Настройки")
+        auth = QAction("Настройки")
         def_setting = self.create_settings_window
-        self.auth.triggered.connect(def_setting)
-        self.menu.addAction(self.auth)
-        self.quit = QAction("Завершить программу")
-        self.quit.triggered.connect(self.app.quit)
-        self.menu.addAction(self.quit)
+        auth.triggered.connect(def_setting)
+        self.menu.addAction(auth)
+        self.menu_items.append(auth)
+        quit_programm = QAction("Завершить программу")
+        quit_programm.triggered.connect(self.app.quit)
+        self.menu.addAction(quit_programm)
+        self.menu_items.append(quit_programm)
         self.tray.setContextMenu(self.menu)
 
     def create_settings_window(self):
@@ -224,7 +306,6 @@ def main():
     sys.excepthook = crash_script
     if not (os.path.exists('logs')):
         os.mkdir('logs')
-
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
