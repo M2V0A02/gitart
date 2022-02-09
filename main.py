@@ -31,6 +31,7 @@ class Notification:
         self.window.show()
 
     def open_notification(self, url):
+        logging.debug("Переход по ссылке - {}".format(url))
         def myfunc():
             webbrowser.open_new(url)
         return myfunc
@@ -44,6 +45,7 @@ class Api:
         self.access_token = access_token
 
     def get_notifications(self):
+        logging.debug("Получение всех новых оповещений для пользователя.")
         return requests.get("http://server300:1080/api/v1/notifications?access_token={}".format(self.access_token))
 
     def get_user(self):
@@ -190,8 +192,10 @@ class TrayIcon:
         self.constructor_menu()
 
     def subscribe_notification(self):
+        logging("Проверка новых сообщений")
         response = self.api.get_user()
         if response is None:
+            logging.debug("Закончить проверку новых сообщений")
             self.timer_subscribe_notifications.cancel()
             exit()
         response = self.api.get_notifications()
@@ -218,6 +222,7 @@ class TrayIcon:
         else:
             self.set_icon('img/notification.png')
         if len(self.data) == 0:
+            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
             response = self.api.get_user()
             user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
