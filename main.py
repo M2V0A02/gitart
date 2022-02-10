@@ -49,7 +49,7 @@ class Api:
 
     def get_notifications(self):
         logging.debug("Получение всех новых оповещений для пользователя.")
-        return requests.get("http://server300:1080/api/v1/notifications?access_token={}".format(self.access_token))
+        return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
 
     def get_user(self):
         try:
