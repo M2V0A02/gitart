@@ -137,9 +137,9 @@ class Setting:
         self.layout.addWidget(self.button_close)
         self.window.setLayout(self.layout)
         read_data = self.tray_icon.config.get_settings()
-        self.edit_token.setText(read_data.get(['token'], ''))
-        self.edit_server.setText(read_data.get(['server'], ''))
-        self.edit_delay_notification.setText(read_data.get(['delay_notification'], ''))
+        self.edit_token.setText(read_data.get('token', ''))
+        self.edit_server.setText(read_data.get('server', ''))
+        self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
         self.show()
 
     def show(self):
@@ -190,7 +190,7 @@ class TrayIcon:
         self.data = []
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
-        self.api = Api(read_data.get(['server'], ''), read_data.get(['token'], ''))
+        self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
         self.timer_animation = threading.Timer(2.0, self.animation)
         self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
         self.constructor_menu()
@@ -264,7 +264,7 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        self.timer_subscribe_notifications = threading.Timer(int(read_data.get(['delay_notification'], '')), self.subscribe_notification)
+        self.timer_subscribe_notifications = threading.Timer(int(read_data.get('delay_notification', '')), self.subscribe_notification)
         if not(self.timer_subscribe_notifications.is_alive()):
             self.timer_subscribe_notifications.start()
 
