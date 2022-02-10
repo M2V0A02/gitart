@@ -31,7 +31,15 @@ class Notification:
             self.notification.append(label)
             self.notification.append(button)
         self.window.setLayout(self.layout)
+        self.show()
+
+    def show(self):
         self.window.show()
+        screen_geometry = QApplication.desktop().availableGeometry()
+        screen_size = (screen_geometry.width(), screen_geometry.height())
+        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
+        self.window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
+                         int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
