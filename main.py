@@ -17,6 +17,10 @@ class Notification:
         self.window = QWidget()
         self.layout = QVBoxLayout()
         self.notification = []
+        if len(data) == 0:
+            label = QLabel('Новых сообщений нет')
+            self.layout.addWidget(label)
+            self.notification.append(label)
         for i in range(len(data)):
             label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
             self.layout.addWidget(label)
@@ -26,9 +30,16 @@ class Notification:
             self.layout.addWidget(button)
             self.notification.append(label)
             self.notification.append(button)
-            self.notification.append(open_notification)
         self.window.setLayout(self.layout)
+        self.show()
+
+    def show(self):
         self.window.show()
+        screen_geometry = QApplication.desktop().availableGeometry()
+        screen_size = (screen_geometry.width(), screen_geometry.height())
+        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
+        self.window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
+                         int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -46,7 +57,7 @@ class Api:
 
     def get_notifications(self):
         logging.debug("Получение всех новых оповещений для пользователя.")
-        return requests.get("http://server300:1080/api/v1/notifications?access_token={}".format(self.access_token))
+        return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
 
     def get_user(self):
         try:
@@ -134,9 +145,9 @@ class Setting:
         self.layout.addWidget(self.button_close)
         self.window.setLayout(self.layout)
         read_data = self.tray_icon.config.get_settings()
-        self.edit_token.setText(read_data['token'])
-        self.edit_server.setText(read_data['server'])
-        self.edit_delay_notification.setText(read_data['delay_notification'])
+        self.edit_token.setText(read_data.get('token', ''))
+        self.edit_server.setText(read_data.get('server', ''))
+        self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
         self.show()
 
     def show(self):
@@ -155,7 +166,8 @@ class Setting:
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.text()
-        to_yaml['delay_notification'] = self.edit_delay_notification.text()
+        if (self.edit_delay_notification.text().isdigit()) and int(self.edit_delay_notification.text()) > 0:
+            to_yaml['delay_notification'] = self.edit_delay_notification.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -186,13 +198,13 @@ class TrayIcon:
         self.data = []
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
-        self.api = Api(read_data['server'], read_data['token'])
+        self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
         self.timer_animation = threading.Timer(2.0, self.animation)
         self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
         self.constructor_menu()
 
     def subscribe_notification(self):
-        logging("Проверка новых сообщений")
+        logging.debug("Проверка новых сообщений")
         response = self.api.get_user()
         if response is None:
             logging.debug("Закончить проверку новых сообщений")
@@ -200,7 +212,7 @@ class TrayIcon:
             exit()
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
-        self.timer_animation = threading.Timer(2.0, self.animation)
+        self.timer_animation.run()
         if len(self.data) != 0 and not(self.timer_animation.is_alive()):
             self.timer_animation.start()
         self.timer_subscribe_notifications.run()
@@ -215,18 +227,16 @@ class TrayIcon:
             out.write(resource.content)
 
     def animation(self):
-        if self.name_icon == "img/notification.png":
-            response = self.api.get_user()
+        response = self.api.get_user()
+        if len(self.data) == 0:
+            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
+            self.timer_animation.cancel()
+            return
+        if self.name_icon == "img/notification.png" and response.status_code == 200:
             user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
-        if len(self.data) == 0:
-            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
-            response = self.api.get_user()
-            user = json.loads(response.text)
-            self.set_icon("img/{}.jpg".format(str(user['id'])))
-            self.timer_animation.cancel()
         self.timer_animation.run()
 
     def show_notification(self):
@@ -260,7 +270,7 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        self.timer_subscribe_notifications = threading.Timer(int(read_data['delay_notification']), self.subscribe_notification)
+        self.timer_subscribe_notifications = threading.Timer(int(read_data.get('delay_notification', '')), self.subscribe_notification)
         if not(self.timer_subscribe_notifications.is_alive()):
             self.timer_subscribe_notifications.start()
 
@@ -296,6 +306,7 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         to_yaml = self.config.get_settings()
         to_yaml['token'] = ''
+        self.data = []
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
