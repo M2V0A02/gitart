@@ -212,7 +212,7 @@ class TrayIcon:
             exit()
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
-        self.timer_animation = threading.Timer(2.0, self.animation)
+        self.timer_animation.run()
         if len(self.data) != 0 and not(self.timer_animation.is_alive()):
             self.timer_animation.start()
         self.timer_subscribe_notifications.run()
@@ -227,18 +227,16 @@ class TrayIcon:
             out.write(resource.content)
 
     def animation(self):
-        if self.name_icon == "img/notification.png":
-            response = self.api.get_user()
+        response = self.api.get_user()
+        if len(self.data) == 0:
+            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
+            self.timer_animation.cancel()
+            return
+        if self.name_icon == "img/notification.png" and response.status_code == 200:
             user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
-        if len(self.data) == 0:
-            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
-            response = self.api.get_user()
-            user = json.loads(response.text)
-            self.set_icon("img/{}.jpg".format(str(user['id'])))
-            self.timer_animation.cancel()
         self.timer_animation.run()
 
     def show_notification(self):
@@ -308,6 +306,7 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         to_yaml = self.config.get_settings()
         to_yaml['token'] = ''
+        self.data = []
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
