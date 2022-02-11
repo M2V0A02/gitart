@@ -1,5 +1,6 @@
 import traceback
 from PyQt5 import QtCore
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -11,7 +12,8 @@ import logging
 import datetime
 import threading
 import webbrowser
-
+sys.path.append('./UI/')
+import setting_ui
 
 class Notification:
     def __init__(self, data):
@@ -117,58 +119,40 @@ class Config:
         return read_data
 
 
-class Setting:
+class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
 
     def __init__(self, tray_icon):
-        logging.debug("Создание экземляра класса Setting.")
         self.tray_icon = tray_icon
-        self.window = QWidget()
-        self.layout = QVBoxLayout()
-        self.label_token = QLabel("Укажите ваш токен")
-        self.layout.addWidget(self.label_token)
-        self.edit_token = QLineEdit()
-        self.edit_server = QLineEdit()
-        self.layout.addWidget(self.edit_token)
-        self.label_server = QLabel("Укажите сервер")
-        self.layout.addWidget(self.label_server)
-        self.layout.addWidget(self.edit_server)
-        self.label_delay_notification = QLabel("Укажите задержки между оповещениями.")
-        self.layout.addWidget(self.label_delay_notification)
-        self.edit_delay_notification = QLineEdit()
-        self.layout.addWidget(self.edit_delay_notification)
-        self.button = QPushButton("Сохранить настройки")
-        save_token = self.save_settings
-        self.button.clicked.connect(save_token)
-        self.layout.addWidget(self.button)
-        self.button_close = QPushButton("Отмена")
-        close_app = self.window.hide
-        self.button_close.clicked.connect(close_app)
-        self.layout.addWidget(self.button_close)
-        self.window.setLayout(self.layout)
+        super().__init__()
+        self.setupUi(self)
+        self.pushButton.clicked.connect(self.save_settings)
+        self.pushButton_2.clicked.connect(self.hide)
         read_data = self.tray_icon.config.get_settings()
+        self.edit_token = self.textEdit
+        self.edit_server = self.textEdit_2
+        self.edit_delay_notification = self.textEdit_3
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
         self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
-        self.show()
 
-    def show(self):
+    def my_show(self):
         logging.debug("Показ окна настроек.")
-        self.window.show()
+        self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
+        window_size = (self.frameSize().width(), self.frameSize().height())
         x = screen_size[0] - window_size[0] - 50
         y = screen_size[1] - window_size[1] - 10
-        self.window.move(x, y)
+        self.move(x, y)
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл.")
         to_yaml = self.tray_icon.config.get_settings()
-        to_yaml['token'] = self.edit_token.text()
+        to_yaml['token'] = self.edit_token.toPlainText()
         self.tray_icon.api.set_access_token(to_yaml['token'])
-        to_yaml['server'] = self.edit_server.text()
-        if (self.edit_delay_notification.text().isdigit()) and float(self.edit_delay_notification.text()) > 0:
-            to_yaml['delay_notification'] = self.edit_delay_notification.text()
+        to_yaml['server'] = self.edit_server.toPlainText()
+        if float(self.edit_delay_notification.toPlainText()) > 0:
+            to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -179,7 +163,7 @@ class Setting:
                 msg.exec()
         self.tray_icon.config.save_settings(to_yaml)
         self.tray_icon.constructor_menu()
-        self.window.hide()
+        self.hide()
 
 
 class TrayIcon:
@@ -303,6 +287,7 @@ class TrayIcon:
     def create_settings_window(self):
         logging.debug("TrayIcon: Показ окна настроек")
         self.setting = Setting(self)
+        self.setting.my_show()
 
     def logout(self):
         logging.info("TrayIcon: Выход из учетной записи")
