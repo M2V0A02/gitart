@@ -187,6 +187,8 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.tray.authorization = False
+        self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
         self.menu_items = []
         self.icon = QIcon(icon)
@@ -242,6 +244,12 @@ class TrayIcon:
     def show_notification(self):
         self.window_notification = Notification(self.data)
 
+    def controller_tray_icon(self, trigger):
+        if trigger == 3 and self.tray.authorization == True:  # Левая кнопка мыши
+            self.show_notification()
+        if trigger == 1:  # Правая кнопка мыши
+            self.tray.show()
+
     def set_icon(self, icon):
         logging.debug("Установление изображение для TrayIcon.")
         self.name_icon = icon
@@ -249,6 +257,7 @@ class TrayIcon:
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
+        self.tray.authorization = True
         logging.debug("TrayIcon: Токен доступа действителен.")
         user = json.loads(response.text)
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
@@ -262,11 +271,6 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        show_notification = self.show_notification
-        notification = QAction('Новые сообщение')
-        notification.triggered.connect(show_notification)
-        self.menu_items.append(notification)
-        self.menu.addAction(notification)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
@@ -298,6 +302,7 @@ class TrayIcon:
         self.menu_items.append(quit_programm)
         self.tray.setContextMenu(self.menu)
 
+
     def create_settings_window(self):
         logging.debug("TrayIcon: Показ окна настроек")
         self.setting = Setting(self)
@@ -307,6 +312,7 @@ class TrayIcon:
         to_yaml = self.config.get_settings()
         to_yaml['token'] = ''
         self.data = []
+        self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
