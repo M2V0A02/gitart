@@ -1,4 +1,5 @@
 import traceback
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -166,7 +167,7 @@ class Setting:
         to_yaml['token'] = self.edit_token.text()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.text()
-        if (self.edit_delay_notification.text().isdigit()) and int(self.edit_delay_notification.text()) > 0:
+        if (self.edit_delay_notification.text().isdigit()) and float(self.edit_delay_notification.text()) > 0:
             to_yaml['delay_notification'] = self.edit_delay_notification.text()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
@@ -201,8 +202,10 @@ class TrayIcon:
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
-        self.timer_animation = threading.Timer(2.0, self.animation)
-        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
+        self.timer_animation = QtCore.QTimer()
+        self.timer_animation.timeout.connect(self.animation)
+        self.timer_subscribe_notifications = QtCore.QTimer()
+        self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
         self.constructor_menu()
 
     def subscribe_notification(self):
@@ -210,14 +213,11 @@ class TrayIcon:
         response = self.api.get_user()
         if response is None:
             logging.debug("Закончить проверку новых сообщений")
-            self.timer_subscribe_notifications.cancel()
             exit()
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
-        self.timer_animation.run()
-        if len(self.data) != 0 and not(self.timer_animation.is_alive()):
-            self.timer_animation.start()
-        self.timer_subscribe_notifications.run()
+        if len(self.data) != 0 and not(self.timer_animation.isActive()):
+            self.timer_animation.start(2000)
 
     def download_icon(self):
         logging.debug("Скачивание изображения из интернета.")
@@ -232,20 +232,18 @@ class TrayIcon:
         response = self.api.get_user()
         if len(self.data) == 0:
             logging.debug("Закончить анимацию, оповещения о новых сообщениях")
-            self.timer_animation.cancel()
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
             user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
-        self.timer_animation.run()
 
     def show_notification(self):
         self.window_notification = Notification(self.data)
 
     def controller_tray_icon(self, trigger):
-        if trigger == 3 and self.tray.authorization == True:  # Левая кнопка мыши
+        if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
             self.show_notification()
         if trigger == 1:  # Правая кнопка мыши
             self.tray.show()
@@ -274,9 +272,8 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        self.timer_subscribe_notifications = threading.Timer(int(read_data.get('delay_notification', '')), self.subscribe_notification)
-        if not(self.timer_subscribe_notifications.is_alive()):
-            self.timer_subscribe_notifications.start()
+        if not(self.timer_subscribe_notifications.isActive()):
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '60')) * 1000))
 
     def constructor_menu(self):
         self.menu_items = []
