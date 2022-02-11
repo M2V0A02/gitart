@@ -1,4 +1,6 @@
 import traceback
+from PyQt5 import QtCore
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -10,6 +12,9 @@ import logging
 import datetime
 import threading
 import webbrowser
+import re
+sys.path.append('./UI/')
+import setting_ui
 
 
 class Notification:
@@ -22,10 +27,10 @@ class Notification:
             self.layout.addWidget(label)
             self.notification.append(label)
         for i in range(len(data)):
-            label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
+            label = QLabel('#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), data[i]['subject']['title']))
             self.layout.addWidget(label)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в репозиторий - {}".format(data[i]['repository']['name']))
+            button = QPushButton("Перейти в - {}".format(data[i]['repository']['full_name']))
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
             self.notification.append(label)
@@ -116,58 +121,40 @@ class Config:
         return read_data
 
 
-class Setting:
+class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
 
     def __init__(self, tray_icon):
-        logging.debug("Создание экземляра класса Setting.")
         self.tray_icon = tray_icon
-        self.window = QWidget()
-        self.layout = QVBoxLayout()
-        self.label_token = QLabel("Укажите ваш токен")
-        self.layout.addWidget(self.label_token)
-        self.edit_token = QLineEdit()
-        self.edit_server = QLineEdit()
-        self.layout.addWidget(self.edit_token)
-        self.label_server = QLabel("Укажите сервер")
-        self.layout.addWidget(self.label_server)
-        self.layout.addWidget(self.edit_server)
-        self.label_delay_notification = QLabel("Укажите задержки между оповещениями.")
-        self.layout.addWidget(self.label_delay_notification)
-        self.edit_delay_notification = QLineEdit()
-        self.layout.addWidget(self.edit_delay_notification)
-        self.button = QPushButton("Сохранить настройки")
-        save_token = self.save_settings
-        self.button.clicked.connect(save_token)
-        self.layout.addWidget(self.button)
-        self.button_close = QPushButton("Отмена")
-        close_app = self.window.hide
-        self.button_close.clicked.connect(close_app)
-        self.layout.addWidget(self.button_close)
-        self.window.setLayout(self.layout)
+        super().__init__()
+        self.setupUi(self)
+        self.pushButton.clicked.connect(self.save_settings)
+        self.pushButton_2.clicked.connect(self.hide)
         read_data = self.tray_icon.config.get_settings()
+        self.edit_token = self.textEdit
+        self.edit_server = self.textEdit_2
+        self.edit_delay_notification = self.textEdit_3
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
         self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
-        self.show()
 
-    def show(self):
+    def my_show(self):
         logging.debug("Показ окна настроек.")
-        self.window.show()
+        self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
+        window_size = (self.frameSize().width(), self.frameSize().height())
         x = screen_size[0] - window_size[0] - 50
         y = screen_size[1] - window_size[1] - 10
-        self.window.move(x, y)
+        self.move(x, y)
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл.")
         to_yaml = self.tray_icon.config.get_settings()
-        to_yaml['token'] = self.edit_token.text()
+        to_yaml['token'] = self.edit_token.toPlainText()
         self.tray_icon.api.set_access_token(to_yaml['token'])
-        to_yaml['server'] = self.edit_server.text()
-        if (self.edit_delay_notification.text().isdigit()) and int(self.edit_delay_notification.text()) > 0:
-            to_yaml['delay_notification'] = self.edit_delay_notification.text()
+        to_yaml['server'] = self.edit_server.toPlainText()
+        if float(self.edit_delay_notification.toPlainText()) > 0:
+            to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
         if self.tray_icon.api.get_user() is None:
             logging.debug("response - пустой в save_settings")
@@ -178,7 +165,7 @@ class Setting:
                 msg.exec()
         self.tray_icon.config.save_settings(to_yaml)
         self.tray_icon.constructor_menu()
-        self.window.hide()
+        self.hide()
 
 
 class TrayIcon:
@@ -187,6 +174,8 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.tray.authorization = False
+        self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
         self.menu_items = []
         self.icon = QIcon(icon)
@@ -199,8 +188,10 @@ class TrayIcon:
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
-        self.timer_animation = threading.Timer(2.0, self.animation)
-        self.timer_subscribe_notifications = threading.Timer(5.0, self.subscribe_notification)
+        self.timer_animation = QtCore.QTimer()
+        self.timer_animation.timeout.connect(self.animation)
+        self.timer_subscribe_notifications = QtCore.QTimer()
+        self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
         self.constructor_menu()
 
     def subscribe_notification(self):
@@ -208,14 +199,11 @@ class TrayIcon:
         response = self.api.get_user()
         if response is None:
             logging.debug("Закончить проверку новых сообщений")
-            self.timer_subscribe_notifications.cancel()
             exit()
         response = self.api.get_notifications()
         self.data = json.loads(response.text)
-        self.timer_animation.run()
-        if len(self.data) != 0 and not(self.timer_animation.is_alive()):
-            self.timer_animation.start()
-        self.timer_subscribe_notifications.run()
+        if len(self.data) != 0 and not(self.timer_animation.isActive()):
+            self.timer_animation.start(2000)
 
     def download_icon(self):
         logging.debug("Скачивание изображения из интернета.")
@@ -230,17 +218,21 @@ class TrayIcon:
         response = self.api.get_user()
         if len(self.data) == 0:
             logging.debug("Закончить анимацию, оповещения о новых сообщениях")
-            self.timer_animation.cancel()
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
             user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
-        self.timer_animation.run()
 
     def show_notification(self):
         self.window_notification = Notification(self.data)
+
+    def controller_tray_icon(self, trigger):
+        if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
+            self.show_notification()
+        if trigger == 1:  # Правая кнопка мыши
+            self.tray.show()
 
     def set_icon(self, icon):
         logging.debug("Установление изображение для TrayIcon.")
@@ -249,6 +241,7 @@ class TrayIcon:
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
+        self.tray.authorization = True
         logging.debug("TrayIcon: Токен доступа действителен.")
         user = json.loads(response.text)
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
@@ -262,17 +255,11 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        show_notification = self.show_notification
-        notification = QAction('Новые сообщение')
-        notification.triggered.connect(show_notification)
-        self.menu_items.append(notification)
-        self.menu.addAction(notification)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
-        self.timer_subscribe_notifications = threading.Timer(int(read_data.get('delay_notification', '')), self.subscribe_notification)
-        if not(self.timer_subscribe_notifications.is_alive()):
-            self.timer_subscribe_notifications.start()
+        if not(self.timer_subscribe_notifications.isActive()):
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '60')) * 1000))
 
     def constructor_menu(self):
         self.menu_items = []
@@ -298,15 +285,20 @@ class TrayIcon:
         self.menu_items.append(quit_programm)
         self.tray.setContextMenu(self.menu)
 
+
     def create_settings_window(self):
         logging.debug("TrayIcon: Показ окна настроек")
         self.setting = Setting(self)
+        self.setting.my_show()
 
     def logout(self):
         logging.info("TrayIcon: Выход из учетной записи")
         to_yaml = self.config.get_settings()
+        self.timer_animation.stop()
+        self.timer_subscribe_notifications.stop()
         to_yaml['token'] = ''
         self.data = []
+        self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
