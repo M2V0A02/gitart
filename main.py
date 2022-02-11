@@ -12,8 +12,10 @@ import logging
 import datetime
 import threading
 import webbrowser
+import re
 sys.path.append('./UI/')
 import setting_ui
+
 
 class Notification:
     def __init__(self, data):
@@ -25,10 +27,10 @@ class Notification:
             self.layout.addWidget(label)
             self.notification.append(label)
         for i in range(len(data)):
-            label = QLabel('Сообщение: {}.'.format(data[i]['subject']['title']))
+            label = QLabel('#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), data[i]['subject']['title']))
             self.layout.addWidget(label)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в репозиторий - {}".format(data[i]['repository']['name']))
+            button = QPushButton("Перейти в - {}".format(data[i]['repository']['full_name']))
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
             self.notification.append(label)
