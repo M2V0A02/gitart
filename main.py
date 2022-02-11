@@ -307,6 +307,8 @@ class TrayIcon:
     def logout(self):
         logging.info("TrayIcon: Выход из учетной записи")
         to_yaml = self.config.get_settings()
+        self.timer_animation.stop()
+        self.timer_subscribe_notifications.stop()
         to_yaml['token'] = ''
         self.data = []
         self.tray.authorization = False
