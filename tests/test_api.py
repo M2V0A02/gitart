@@ -19,6 +19,7 @@ def test_set_server_server_received():
     api.set_server('server300:1090')
     assert api.get_server() == 'server300:1090'
 
+
 # ѕровер€ю что параметр токен перезаписываетс€
 def test_set_access_token_access_token_received():
     api = main.Api('server300:1080', '123')

@@ -9,7 +9,8 @@ import main
 # Проверяю что создается конфиг файл
 def test_init_create_config_config_create_successful():
     name = 'test.yaml'
-    os.remove(name)
+    if os.path.exists(name):
+        os.remove(name)
     config = main.Config(name)
     assert os.path.exists(name)
     os.remove(name)
