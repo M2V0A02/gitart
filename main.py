@@ -14,24 +14,40 @@ import threading
 import webbrowser
 import re
 import UI.setting_ui as setting_ui
+from PyQt5 import QtGui
 
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
         self.layout = QVBoxLayout()
         self.notification = []
+        label = QLabel("Уведомления")
+        label.setGeometry(QtCore.QRect(10, 10, 131, 31))
+        font = QtGui.QFont()
+        font.setPointSize(18)
+        label.setFont(font)
+        self.layout.addWidget(label)
+        self.notification.append(label)
         if len(data) == 0:
-            label = QLabel('Новых сообщений нет')
+            label = QLabel('У вас нет непрочитанных сообщений')
+            font = QtGui.QFont()
+            font.setPointSize(12)
+            label.setFont(font)
             self.layout.addWidget(label)
             self.notification.append(label)
         for i in range(len(data)):
-            label = QLabel('#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), data[i]['subject']['title']))
-            self.layout.addWidget(label)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в - {}".format(data[i]['repository']['full_name']))
+            font = QtGui.QFont()
+            font.setPointSize(12)
+            title = '#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''),
+                                       data[i]['subject']['title'])
+            if len(title) > 25:
+                title = "{}...".format(title[0:25])
+            button = QPushButton("{}    Перейти в - {}".format(title, data[i]['repository']['full_name']))
+            button.setStyleSheet("color: #12416f;")
             button.clicked.connect(open_notification)
+            button.setFont(font)
             self.layout.addWidget(button)
-            self.notification.append(label)
             self.notification.append(button)
         self.window.setLayout(self.layout)
         self.show()
