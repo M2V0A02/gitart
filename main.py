@@ -13,8 +13,7 @@ import datetime
 import threading
 import webbrowser
 import re
-sys.path.append('./UI/')
-import setting_ui
+import UI.setting_ui as setting_ui
 
 class Notification:
     def __init__(self, data):
