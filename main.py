@@ -13,27 +13,41 @@ import datetime
 import threading
 import webbrowser
 import re
-sys.path.append('./UI/')
-import setting_ui
-
+import UI.setting_ui as setting_ui
+from PyQt5 import QtGui
 
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
         self.layout = QVBoxLayout()
         self.notification = []
+        label = QLabel("Уведомления")
+        label.setGeometry(QtCore.QRect(10, 10, 131, 31))
+        font = QtGui.QFont()
+        font.setPointSize(18)
+        label.setFont(font)
+        self.layout.addWidget(label)
+        self.notification.append(label)
         if len(data) == 0:
-            label = QLabel('Новых сообщений нет')
+            label = QLabel('У вас нет непрочитанных сообщений')
+            font = QtGui.QFont()
+            font.setPointSize(12)
+            label.setFont(font)
             self.layout.addWidget(label)
             self.notification.append(label)
         for i in range(len(data)):
-            label = QLabel('#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), data[i]['subject']['title']))
-            self.layout.addWidget(label)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в - {}".format(data[i]['repository']['full_name']))
+            font = QtGui.QFont()
+            font.setPointSize(12)
+            title = '#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''),
+                                       data[i]['subject']['title'])
+            if len(title) > 25:
+                title = "{}...".format(title[0:25])
+            button = QPushButton("{}    Перейти в - {}".format(title, data[i]['repository']['full_name']))
+            button.setStyleSheet("color: #12416f;")
             button.clicked.connect(open_notification)
+            button.setFont(font)
             self.layout.addWidget(button)
-            self.notification.append(label)
             self.notification.append(button)
         self.window.setLayout(self.layout)
         self.show()
@@ -101,7 +115,7 @@ class Config:
         logging.debug("Создание экземпляра класса - конфиг.")
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": '', "token": '', "delay_notification": "5"}
+            to_yaml = {"server": '', "token": '', "delay_notification": "45"}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
@@ -153,6 +167,8 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         to_yaml['token'] = self.edit_token.toPlainText()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.toPlainText()
+        if not(self.edit_delay_notification.toPlainText().isdigit()):
+            self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.toPlainText()) > 0:
             to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
@@ -258,8 +274,14 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        if not(str(read_data.get('delay_notification', '')).isdigit()):
+            self.config.save_settings({'delay_notification': '45'})
+            with open('conf.yaml') as f_obj:
+                read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        if float(read_data.get('delay_notification', '')) < 0.001:
+            self.config.save_settings({'delay_notification': '45'})
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '60')) * 1000))
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '45')) * 1000))
 
     def constructor_menu(self):
         self.menu_items = []
