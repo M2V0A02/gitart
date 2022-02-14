@@ -16,7 +16,6 @@ import re
 sys.path.append('./UI/')
 import setting_ui
 
-
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
@@ -101,7 +100,7 @@ class Config:
         logging.debug("Создание экземпляра класса - конфиг.")
         self.name = name
         if not (os.path.exists(name)):
-            to_yaml = {"server": '', "token": '', "delay_notification": "5"}
+            to_yaml = {"server": '', "token": '', "delay_notification": "45"}
             with open(name, 'w') as f_obj:
                 yaml.dump(to_yaml, f_obj)
 
@@ -153,6 +152,8 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         to_yaml['token'] = self.edit_token.toPlainText()
         self.tray_icon.api.set_access_token(to_yaml['token'])
         to_yaml['server'] = self.edit_server.toPlainText()
+        if not(self.edit_delay_notification.toPlainText().isdigit()):
+            self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.toPlainText()) > 0:
             to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
@@ -258,8 +259,14 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         with open('conf.yaml') as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        if not(str(read_data.get('delay_notification', '')).isdigit()):
+            self.config.save_settings({'delay_notification': '45'})
+            with open('conf.yaml') as f_obj:
+                read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
+        if float(read_data.get('delay_notification', '')) < 0.001:
+            self.config.save_settings({'delay_notification': '45'})
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '60')) * 1000))
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '45')) * 1000))
 
     def constructor_menu(self):
         self.menu_items = []
