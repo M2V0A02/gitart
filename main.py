@@ -10,7 +10,6 @@ import json
 import os
 import logging
 import datetime
-import threading
 import webbrowser
 import re
 import UI.setting_ui as setting_ui
