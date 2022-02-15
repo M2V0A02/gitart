@@ -61,11 +61,7 @@ class Notification:
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
-
-        def myfunc():
-            webbrowser.open_new(url)
-
-        return myfunc
+        return lambda: webbrowser.open_new(url)
 
 
 class Api:
