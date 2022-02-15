@@ -13,6 +13,7 @@ import logging
 import datetime
 import webbrowser
 import re
+import threading
 import UI.setting_ui as setting_ui
 from PyQt5 import QtGui
 
@@ -20,22 +21,19 @@ from PyQt5 import QtGui
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
+        self.window.setWindowTitle('Уведомления')
+        icon = QIcon('img/logo.svg')
+        self.window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.notification = []
-        label = QLabel("Уведомления")
+        label = QLabel("Непрочитанные")
         label.setGeometry(QtCore.QRect(10, 10, 131, 31))
         font = QtGui.QFont()
         font.setPointSize(18)
         label.setFont(font)
+        print(data)
         self.layout.addWidget(label)
         self.notification.append(label)
-        if len(data) == 0:
-            label = QLabel('У вас нет непрочитанных сообщений')
-            font = QtGui.QFont()
-            font.setPointSize(12)
-            label.setFont(font)
-            self.layout.addWidget(label)
-            self.notification.append(label)
         for i in range(len(data)):
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
             font = QtGui.QFont()
@@ -44,8 +42,8 @@ class Notification:
                                        data[i]['subject']['title'])
             if len(title) > 25:
                 title = "{}...".format(title[0:25])
-            button = QPushButton("{}    Перейти в - {}".format(title, data[i]['repository']['full_name']))
-            button.setStyleSheet("color: #12416f;")
+            button = QPushButton("{}    Перейти в - {} ".format(title, data[i]['repository']['full_name']))
+            button.setStyleSheet("color: #23619e;background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
@@ -205,6 +203,7 @@ class TrayIcon:
         self.hint = ''
         self.setting = ''
         self.notifications = []
+        self.timer_constructor_menu = threading.Timer(3, self.constructor_menu)
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
@@ -223,6 +222,7 @@ class TrayIcon:
         response = self.api.get_notifications()
         self.notifications = json.loads(response.text)
         if len(self.notifications) != 0 and not(self.timer_animation.isActive()):
+            self.constructor_menu()
             self.timer_animation.start(2000)
 
     def download_icon(self):
@@ -236,17 +236,21 @@ class TrayIcon:
 
     def animation(self):
         response = self.api.get_user()
+        user = json.loads(response.text)
         if len(self.notifications) == 0:
             logging.debug("Закончить анимацию, оповещения о новых сообщениях")
+            self.set_icon("img/{}.jpg".format(str(user['id'])))
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
-            user = json.loads(response.text)
             self.set_icon("img/{}.jpg".format(str(user['id'])))
         else:
             self.set_icon('img/notification.png')
 
     def show_notification(self):
-        self.window_notification = Notification(self.notifications)
+        if len(self.notifications) == 0:
+            self.tray.setToolTip('Новых сообщений нет')
+        else:
+            self.window_notification = Notification(self.notifications)
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
