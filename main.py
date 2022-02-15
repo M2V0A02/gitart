@@ -1,4 +1,5 @@
 import traceback
+from PyQt5 import Qt
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import *
@@ -14,6 +15,7 @@ import webbrowser
 import re
 import UI.setting_ui as setting_ui
 from PyQt5 import QtGui
+
 
 class Notification:
     def __init__(self, data):
@@ -61,8 +63,10 @@ class Notification:
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
+
         def myfunc():
             webbrowser.open_new(url)
+
         return myfunc
 
 
@@ -140,6 +144,7 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
+        self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
         read_data = self.tray_icon.config.get_settings()
@@ -305,7 +310,6 @@ class TrayIcon:
         self.menu.addAction(quit_programm)
         self.menu_items.append(quit_programm)
         self.tray.setContextMenu(self.menu)
-
 
     def create_settings_window(self):
         logging.debug("TrayIcon: Показ окна настроек")
