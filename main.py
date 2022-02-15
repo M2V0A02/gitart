@@ -204,7 +204,7 @@ class TrayIcon:
         self.menu = QMenu()
         self.hint = ''
         self.setting = ''
-        self.data = []
+        self.notifications = []
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
@@ -221,8 +221,8 @@ class TrayIcon:
             logging.debug("Закончить проверку новых сообщений")
             exit()
         response = self.api.get_notifications()
-        self.data = json.loads(response.text)
-        if len(self.data) != 0 and not(self.timer_animation.isActive()):
+        self.notifications = json.loads(response.text)
+        if len(self.notifications) != 0 and not(self.timer_animation.isActive()):
             self.timer_animation.start(2000)
 
     def download_icon(self):
@@ -236,7 +236,7 @@ class TrayIcon:
 
     def animation(self):
         response = self.api.get_user()
-        if len(self.data) == 0:
+        if len(self.notifications) == 0:
             logging.debug("Закончить анимацию, оповещения о новых сообщениях")
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
@@ -246,7 +246,7 @@ class TrayIcon:
             self.set_icon('img/notification.png')
 
     def show_notification(self):
-        self.window_notification = Notification(self.data)
+        self.window_notification = Notification(self.notifications)
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
