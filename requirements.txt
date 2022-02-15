@@ -2,4 +2,3 @@ PyQt5
 pyyaml
 pytest
 pytest-cov
-pytest-xdist
