@@ -26,9 +26,9 @@ class Notification:
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
+        self.layout.setGeometry(QtCore.QRect(10, 10, 160, 129))
         self.notification = []
         label = QLabel("Непрочитанные")
-        label.setGeometry(QtCore.QRect(10, 10, 131, 31))
         font = QtGui.QFont()
         font.setPointSize(18)
         label.setFont(font)
@@ -43,11 +43,12 @@ class Notification:
             if len(title) > 25:
                 title = "{}...".format(title[0:25])
             button = QPushButton("{}    Перейти в - {} ".format(title, data[i]['repository']['full_name']))
-            button.setStyleSheet("color: #23619e;background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
+            button.setStyleSheet("color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
             self.notification.append(button)
+        self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.show()
 
