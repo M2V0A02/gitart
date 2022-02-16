@@ -1,7 +1,8 @@
 import traceback
+
+import PyQt5.QtSvg
 from PyQt5 import Qt
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -15,7 +16,6 @@ import webbrowser
 import re
 import threading
 import UI.setting_ui as setting_ui
-from PyQt5 import QtGui
 
 
 class Notification:
@@ -139,8 +139,9 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         self.setFixedSize(self.width(), self.height())
-        self.label_4.setPixmap(QtGui.QPixmap("img/logo.svg").scaled(64, 64))
-
+        renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)
+        renderer.setGeometry(self.label_4.geometry())
+        renderer.show()
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
