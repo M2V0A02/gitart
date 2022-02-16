@@ -21,6 +21,7 @@ from PyQt5 import QtGui
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
+        self.window.setFixedSize(500, 400)
         self.window.setWindowTitle('Уведомления')
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
@@ -31,7 +32,6 @@ class Notification:
         font = QtGui.QFont()
         font.setPointSize(18)
         label.setFont(font)
-        print(data)
         self.layout.addWidget(label)
         self.notification.append(label)
         for i in range(len(data)):
