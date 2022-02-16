@@ -26,7 +26,7 @@ class Notification:
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.layout.setGeometry(QtCore.QRect(10, 10, 160, 129))
+        self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
         self.notification = []
         label = QLabel("Непрочитанные")
         font = QtGui.QFont()
@@ -35,6 +35,8 @@ class Notification:
         self.layout.addWidget(label)
         self.notification.append(label)
         for i in range(len(data)):
+            if i > 4:
+                break
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
             font = QtGui.QFont()
             font.setPointSize(12)
