@@ -1,7 +1,8 @@
 import traceback
+
+import PyQt5.QtSvg
 from PyQt5 import Qt
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -15,26 +16,27 @@ import webbrowser
 import re
 import threading
 import UI.setting_ui as setting_ui
-from PyQt5 import QtGui
 
 
 class Notification:
     def __init__(self, data):
         self.window = QWidget()
+        self.window.setFixedSize(500, 400)
         self.window.setWindowTitle('Уведомления')
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
+        self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
         self.notification = []
         label = QLabel("Непрочитанные")
-        label.setGeometry(QtCore.QRect(10, 10, 131, 31))
         font = QtGui.QFont()
         font.setPointSize(18)
         label.setFont(font)
-        print(data)
         self.layout.addWidget(label)
         self.notification.append(label)
         for i in range(len(data)):
+            if i > 4:
+                break
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
             font = QtGui.QFont()
             font.setPointSize(12)
@@ -43,11 +45,12 @@ class Notification:
             if len(title) > 25:
                 title = "{}...".format(title[0:25])
             button = QPushButton("{}    Перейти в - {} ".format(title, data[i]['repository']['full_name']))
-            button.setStyleSheet("color: #23619e;background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
+            button.setStyleSheet("color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
             self.notification.append(button)
+        self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.show()
 
@@ -138,6 +141,10 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
+        self.setFixedSize(self.width(), self.height())
+        renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)
+        renderer.setGeometry(self.label_4.geometry())
+        renderer.show()
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
@@ -344,6 +351,7 @@ def main():
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon('img/icon.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
