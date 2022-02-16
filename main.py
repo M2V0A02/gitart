@@ -138,6 +138,9 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
+        self.setFixedSize(self.width(), self.height())
+        self.label_4.setPixmap(QtGui.QPixmap("img/logo.svg").scaled(64, 64))
+
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
@@ -344,7 +347,7 @@ def main():
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('img/icon.jpg'))
+    app.setWindowIcon(QIcon('img/icon.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
