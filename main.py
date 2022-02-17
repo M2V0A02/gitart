@@ -16,12 +16,13 @@ import webbrowser
 import re
 import threading
 import UI.setting_ui as setting_ui
+from PyQt5.QtWinExtras import QtWin
 
 
 class Notification:
-    def __init__(self, data):
+    def __init__(self, data, api):
         self.window = QWidget()
-        self.window.setFixedSize(500, 400)
+        self.window.setFixedSize(800, 800)
         self.window.setWindowTitle('Уведомления')
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
@@ -35,17 +36,30 @@ class Notification:
         self.layout.addWidget(label)
         self.notification.append(label)
         for i in range(len(data)):
-            if i > 4:
+            if i > 5:
                 break
+            comment = json.loads(api.get_comment(re.search(r'comments/\d+', format(data[i]['subject']['latest_comment_url']))[0].replace('comments/', '')).text)
+            date = datetime.datetime.strptime(comment['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+            timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+            timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+            date = date + datetime.timedelta(hours=timezone)
+            date = date.strftime('%H:%M %d-%m-%Y')
+            tasks = data[i]['subject']['title']
+            if len(tasks) > 11:
+                tasks = "{}...".format(tasks[0:11])
+            repo = " {}, задача #{} - {}".format(data[i]['repository']['full_name'], re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), str(tasks))
+            label = QLabel('Пользователь: {}, репозиторий: {}, время создания: {}.'.format(comment['user']['login'], repo, date))
+            label.setStyleSheet("font-size:12px;")
+            self.layout.addWidget(label)
+            self.notification.append(label)
+            plain_text = QPlainTextEdit('Сообщение: {}.'.format(comment['body']))
+            plain_text.setReadOnly(True)
+            plain_text.setBaseSize(200, 200)
+            self.layout.addWidget(plain_text)
+            self.notification.append(plain_text)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            font = QtGui.QFont()
-            font.setPointSize(12)
-            title = '#{} - {}.'.format(re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''),
-                                       data[i]['subject']['title'])
-            if len(title) > 25:
-                title = "{}...".format(title[0:25])
-            button = QPushButton("{}    Перейти в - {} ".format(title, data[i]['repository']['full_name']))
-            button.setStyleSheet("color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 35px; border-color: #dedede; text-align:left; margin:10px;")
+            button = QPushButton("Перейти в - {}/issues/{} ".format(data[i]['repository']['full_name'], re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', '')))
+            button.setStyleSheet("font-size:12px; color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
@@ -77,6 +91,10 @@ class Api:
     def get_notifications(self):
         logging.debug("Получение всех новых оповещений для пользователя.")
         return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+
+    def get_comment(self, comment):
+        logging.debug("Получение  комментария")
+        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server, comment))
 
     def get_user(self):
         try:
@@ -253,7 +271,7 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            self.window_notification = Notification(self.notifications)
+            self.window_notification = Notification(self.notifications, self.api)
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
@@ -343,6 +361,8 @@ def crash_script(error_type, value, tb):
 
 
 def main():
+    myappid = 'myproduct'
+    QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
     if not (os.path.exists('logs')):
         os.mkdir('logs')
@@ -351,7 +371,7 @@ def main():
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('img/icon.png'))
+    app.setWindowIcon(QIcon('./img/icon.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
