@@ -36,7 +36,7 @@ class Notification:
         self.layout.addWidget(label)
         self.notification.append(label)
         for i in range(len(data)):
-            if i > 2:
+            if i > 5:
                 break
             comment = json.loads(api.get_comment(re.search(r'comments/\d+', format(data[i]['subject']['latest_comment_url']))[0].replace('comments/', '')).text)
             date = datetime.datetime.strptime(comment['created_at'], '%Y-%m-%dT%H:%M:%SZ')
@@ -53,7 +53,7 @@ class Notification:
             self.layout.addWidget(label)
             self.notification.append(label)
             plain_text = QPlainTextEdit('Сообщение: {}.'.format(comment['body']))
-            plain_text.setEnabled(False)
+            plain_text.setReadOnly(True)
             plain_text.setBaseSize(200, 200)
             self.layout.addWidget(plain_text)
             self.notification.append(plain_text)
