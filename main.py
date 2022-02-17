@@ -78,6 +78,10 @@ class Api:
         logging.debug("Получение всех новых оповещений для пользователя.")
         return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
 
+    def get_comment(self, comment):
+        logging.debug("Получение  комментария")
+        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server, comment))
+
     def get_user(self):
         try:
             logging.debug("Обращение к Api для получение информацию о своей учетной записи.")
