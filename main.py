@@ -16,6 +16,7 @@ import webbrowser
 import re
 import threading
 import UI.setting_ui as setting_ui
+from PyQt5.QtWinExtras import QtWin
 
 
 class Notification:
@@ -360,6 +361,8 @@ def crash_script(error_type, value, tb):
 
 
 def main():
+    myappid = 'myproduct'
+    QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
     if not (os.path.exists('logs')):
         os.mkdir('logs')
@@ -368,7 +371,7 @@ def main():
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('img/icon.png'))
+    app.setWindowIcon(QIcon('./img/icon.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
