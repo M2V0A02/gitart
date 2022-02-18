@@ -74,15 +74,14 @@ class Notification:
         self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
-        self.show()
-
-    def show(self):
         self.scroll.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
         window_size = (self.scroll.frameSize().width(), self.scroll.frameSize().height())
         self.scroll.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
+
+
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -225,6 +224,7 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.window_notification = ''
         self.tray.authorization = False
         self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
@@ -283,6 +283,7 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
+            del self.window_notification
             self.window_notification = Notification(self.notifications, self.api)
 
     def controller_tray_icon(self, trigger):
