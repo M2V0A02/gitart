@@ -23,10 +23,10 @@ class Notification:
     def __init__(self, data, api):
         self.scroll = QScrollArea()
         self.scroll.setFixedSize(800, 800)
+        self.scroll.setWindowTitle("Новые сообщения")
         self.window = QWidget()
-        self.window.setWindowTitle('Уведомления')
         icon = QIcon('img/logo.svg')
-        self.window.setWindowIcon(icon)
+        self.scroll.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
         self.notification_ui = []
