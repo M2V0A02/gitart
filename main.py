@@ -21,8 +21,9 @@ from PyQt5.QtWinExtras import QtWin
 
 class Notification:
     def __init__(self, data, api):
+        self.scroll = QScrollArea()
+        self.scroll.setFixedSize(800, 800)
         self.window = QWidget()
-        self.window.setFixedSize(800, 800)
         self.window.setWindowTitle('Уведомления')
         icon = QIcon('img/logo.svg')
         self.window.setWindowIcon(icon)
@@ -36,8 +37,6 @@ class Notification:
         self.layout.addWidget(label)
         self.notification_ui.append(label)
         for i in range(len(data)):
-            if i > 5:
-                break
             if not(data[i]['subject']['latest_comment_url'] == ''):
                 notification = json.loads(api.get_comment(
                     re.search(r'comments/\d+', format(data[i]['subject']['latest_comment_url']))[0].replace('comments/',
@@ -62,7 +61,7 @@ class Notification:
             self.notification_ui.append(label)
             plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['body']))
             plain_text.setReadOnly(True)
-            plain_text.setBaseSize(200, 200)
+            plain_text.setFixedSize(750, 75)
             self.layout.addWidget(plain_text)
             self.notification_ui.append(plain_text)
             open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
@@ -74,14 +73,15 @@ class Notification:
             self.notification_ui.append(button)
         self.layout.addStretch()
         self.window.setLayout(self.layout)
+        self.scroll.setWidget(self.window)
         self.show()
 
     def show(self):
-        self.window.show()
+        self.scroll.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.window.frameSize().width(), self.window.frameSize().height())
-        self.window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
+        window_size = (self.scroll.frameSize().width(), self.scroll.frameSize().height())
+        self.scroll.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def open_notification(self, url):
@@ -383,7 +383,7 @@ def main():
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('./img/icon.png'))
+    app.setWindowIcon(QIcon('./img/logo.svg'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
     app.exec_()
