@@ -20,7 +20,8 @@ from PyQt5.QtWinExtras import QtWin
 
 
 class Notification:
-    def __init__(self, data, api):
+    def __init__(self, api, tray):
+        self.tray = tray
         self.scroll = QScrollArea()
         self.scroll.setFixedSize(800, 800)
         self.scroll.setWindowTitle("Новые сообщения")
@@ -30,32 +31,43 @@ class Notification:
         self.layout = QVBoxLayout()
         self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
         self.notification_ui = []
-        label = QLabel("Непрочитанные")
+        self.api = api
+
+    def show(self, notifications):
+        self.notification_ui = []
+        self.layout = QVBoxLayout()
+        self.window = QWidget()
+        label = QLabel("Непрочитанна - {} сообщений.".format(len(notifications)))
         font = QtGui.QFont()
         font.setPointSize(18)
         label.setFont(font)
         self.layout.addWidget(label)
         self.notification_ui.append(label)
-        for i in range(len(data)):
-            if not(data[i]['subject']['latest_comment_url'] == ''):
-                notification = json.loads(api.get_comment(
-                    re.search(r'comments/\d+', format(data[i]['subject']['latest_comment_url']))[0].replace('comments/',
+        for i in range(len(notifications)):
+            if not (notifications[i]['subject']['latest_comment_url'] == ''):
+                notification = json.loads(self.api.get_comment(
+                    re.search(r'comments/\d+', format(notifications[i]['subject']['latest_comment_url']))[0].replace('comments/',
                                                                                                             '')).text)
             else:
-                repo = re.search(r'repos/.+/issues', data[i]['subject']['url'])[0].replace('repos/', '').replace('/issues', '')
-                issues = re.search(r'/issues/.+', data[i]['subject']['url'])[0].replace('/issues/', '')
-                notification = json.loads(api.get_repos_issues(repo, issues).text)
+                repo = re.search(r'repos/.+/issues', notifications[i]['subject']['url'])[0].replace('repos/', '').replace(
+                    '/issues', '')
+                issues = re.search(r'/issues/.+', notifications[i]['subject']['url'])[0].replace('/issues/', '')
+                notification = json.loads(self.api.get_repos_issues(repo, issues).text)
                 notification['body'] = 'новая задача'
             date = datetime.datetime.strptime(notification['created_at'], '%Y-%m-%dT%H:%M:%SZ')
             timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
             timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
             date = date + datetime.timedelta(hours=timezone)
             date = date.strftime('%H:%M %d-%m-%Y')
-            tasks = data[i]['subject']['title']
+            tasks = notifications[i]['subject']['title']
             if len(tasks) > 11:
                 tasks = "{}...".format(tasks[0:11])
-            repo = " {}, задача #{} - {}".format(data[i]['repository']['full_name'], re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', ''), str(tasks))
-            label = QLabel('Пользователь: {}, репозиторий: {}, время создания: {}.'.format(notification['user']['login'], repo, date))
+            repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'],
+                                                 re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace(
+                                                     'issues/', ''), str(tasks))
+            label = QLabel(
+                'Пользователь: {}, репозиторий: {}, время создания: {}.'.format(notification['user']['login'], repo,
+                                                                                date))
             label.setStyleSheet("font-size:12px;")
             self.layout.addWidget(label)
             self.notification_ui.append(label)
@@ -64,25 +76,35 @@ class Notification:
             plain_text.setFixedSize(750, 75)
             self.layout.addWidget(plain_text)
             self.notification_ui.append(plain_text)
-            open_notification = self.open_notification(data[i]['subject']['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в - {}/issues/{} ".format(data[i]['repository']['full_name'], re.search(r'issues/\d+', data[i]['subject']['url'])[0].replace('issues/', '')))
-            button.setStyleSheet("font-size:12px; color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+            open_notification = self.open_notification(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
+                                                                    re.search(r'issues/\d+', notifications[i]['subject']['url'])[
+                                                                        0].replace('issues/', '')))
+            button.setStyleSheet(
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
             self.notification_ui.append(button)
         self.layout.addStretch()
+        button = QPushButton("Обновить")
+        button.setStyleSheet("max-width:75px; min-width:75px;")
+        button.clicked.connect(self.update)
+        layout = QHBoxLayout()
+        layout.addStretch()
+        layout.addWidget(button)
+        self.layout.addLayout(layout)
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
-        self.show()
-
-    def show(self):
         self.scroll.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
         window_size = (self.scroll.frameSize().width(), self.scroll.frameSize().height())
         self.scroll.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
+
+    def update(self):
+        self.show(self.tray.get_notifications())
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -225,6 +247,7 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
+        self.window_notification = ''
         self.tray.authorization = False
         self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
@@ -267,6 +290,9 @@ class TrayIcon:
         with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
             out.write(resource.content)
 
+    def get_notifications(self):
+        return self.notifications
+
     def animation(self):
         response = self.api.get_user()
         user = json.loads(response.text)
@@ -283,7 +309,9 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            self.window_notification = Notification(self.notifications, self.api)
+            del self.window_notification
+            self.window_notification = Notification(self.api, self)
+            self.window_notification.show(self.notifications)
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
