@@ -20,7 +20,8 @@ from PyQt5.QtWinExtras import QtWin
 
 
 class Notification:
-    def __init__(self, api):
+    def __init__(self, api, tray):
+        self.tray = tray
         self.scroll = QScrollArea()
         self.scroll.setFixedSize(800, 800)
         self.scroll.setWindowTitle("Новые сообщения")
@@ -32,8 +33,10 @@ class Notification:
         self.notification_ui = []
         self.api = api
 
-
     def show(self, notifications):
+        self.notification_ui = []
+        self.layout = QVBoxLayout()
+        self.window = QWidget()
         label = QLabel("Непрочитанна - {} сообщений.".format(len(notifications)))
         font = QtGui.QFont()
         font.setPointSize(18)
@@ -78,12 +81,19 @@ class Notification:
                                                                     re.search(r'issues/\d+', notifications[i]['subject']['url'])[
                                                                         0].replace('issues/', '')))
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: #FFFFFF; border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             button.setFont(font)
             self.layout.addWidget(button)
             self.notification_ui.append(button)
         self.layout.addStretch()
+        button = QPushButton("Обновить")
+        button.setStyleSheet("max-width:75px; min-width:75px;")
+        button.clicked.connect(self.update)
+        layout = QHBoxLayout()
+        layout.addStretch()
+        layout.addWidget(button)
+        self.layout.addLayout(layout)
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
         self.scroll.show()
@@ -92,6 +102,9 @@ class Notification:
         window_size = (self.scroll.frameSize().width(), self.scroll.frameSize().height())
         self.scroll.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
+
+    def update(self):
+        self.show(self.tray.get_notifications())
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -277,6 +290,9 @@ class TrayIcon:
         with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
             out.write(resource.content)
 
+    def get_notifications(self):
+        return self.notifications
+
     def animation(self):
         response = self.api.get_user()
         user = json.loads(response.text)
@@ -294,7 +310,7 @@ class TrayIcon:
             self.tray.setToolTip('Новых сообщений нет')
         else:
             del self.window_notification
-            self.window_notification = Notification(self.api)
+            self.window_notification = Notification(self.api, self)
             self.window_notification.show(self.notifications)
 
     def controller_tray_icon(self, trigger):
