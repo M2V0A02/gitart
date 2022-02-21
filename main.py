@@ -316,7 +316,6 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            del self.window_notification
             self.window_notification = Notification(self.api, self)
             self.window_notification.create_window_notification(self.notifications)
 
