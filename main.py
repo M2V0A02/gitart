@@ -33,32 +33,31 @@ class Notification:
         self.notification_ui = []
         self.api = api
 
-    def show(self, notifications):
-        self.notification_ui = []
-        self.layout = QVBoxLayout()
-        self.window = QWidget()
-        label = QLabel("Непрочитанна - {} сообщений.".format(len(notifications)))
-        font = QtGui.QFont()
-        font.setPointSize(18)
-        label.setFont(font)
-        self.layout.addWidget(label)
-        self.notification_ui.append(label)
+    def get_additional_information(self, notifications):
+        if not (notifications['subject']['latest_comment_url'] == ''):
+            return json.loads(self.api.get_comment(
+                re.search(r'comments/\d+', format(notifications['subject']['latest_comment_url']))[0].replace(
+                    'comments/',
+                    '')).text)
+        else:
+            repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
+                '/issues', '')
+            issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
+            notification = json.loads(self.api.get_repos_issues(repo, issues).text)
+            notification['body'] = 'новая задача'
+            return notification
+
+    def formatting_the_date(self, date):
+        date = datetime.datetime.strptime(date['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+        date = date + datetime.timedelta(hours=timezone)
+        return date.strftime('%H:%M %d-%m-%Y')
+
+    def show_notifications(self, notifications):
         for i in range(len(notifications)):
-            if not (notifications[i]['subject']['latest_comment_url'] == ''):
-                notification = json.loads(self.api.get_comment(
-                    re.search(r'comments/\d+', format(notifications[i]['subject']['latest_comment_url']))[0].replace('comments/',
-                                                                                                            '')).text)
-            else:
-                repo = re.search(r'repos/.+/issues', notifications[i]['subject']['url'])[0].replace('repos/', '').replace(
-                    '/issues', '')
-                issues = re.search(r'/issues/.+', notifications[i]['subject']['url'])[0].replace('/issues/', '')
-                notification = json.loads(self.api.get_repos_issues(repo, issues).text)
-                notification['body'] = 'новая задача'
-            date = datetime.datetime.strptime(notification['created_at'], '%Y-%m-%dT%H:%M:%SZ')
-            timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
-            timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-            date = date + datetime.timedelta(hours=timezone)
-            date = date.strftime('%H:%M %d-%m-%Y')
+            notification = self.get_additional_information(notifications[i])
+            date = self.formatting_the_date(notification)
             tasks = notifications[i]['subject']['title']
             if len(tasks) > 11:
                 tasks = "{}...".format(tasks[0:11])
@@ -83,17 +82,25 @@ class Notification:
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
-            button.setFont(font)
             self.layout.addWidget(button)
             self.notification_ui.append(button)
-        self.layout.addStretch()
+
+    def create_window_notification(self, notifications):
+        self.notification_ui = []
+        self.layout = QVBoxLayout()
+        self.window = QWidget()
+        layout = QHBoxLayout()
+        label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
+        label.setStyleSheet("font-size:24px;")
+        layout.addWidget(label)
         button = QPushButton("Обновить")
         button.setStyleSheet("max-width:75px; min-width:75px;")
         button.clicked.connect(self.update)
-        layout = QHBoxLayout()
-        layout.addStretch()
         layout.addWidget(button)
         self.layout.addLayout(layout)
+        self.notification_ui.append(label)
+        self.show_notifications(notifications)
+        self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
         self.scroll.show()
@@ -104,7 +111,7 @@ class Notification:
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def update(self):
-        self.show(self.tray.get_notifications())
+        self.create_window_notification(self.tray.get_notifications())
 
     def open_notification(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -309,9 +316,8 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            del self.window_notification
             self.window_notification = Notification(self.api, self)
-            self.window_notification.show(self.notifications)
+            self.window_notification.create_window_notification(self.notifications)
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
@@ -396,7 +402,13 @@ class TrayIcon:
 
 
 def crash_script(error_type, value, tb):
-    logging.critical("Название ошибки - {}, значение - {}, tb - {}".format(error_type, value, traceback.extract_tb(tb)))
+    list_tb = str(traceback.extract_tb(tb)).split('>, ')
+    critical_error = "Название ошибки - {}, значение - {},".format(error_type, value)
+    indent_format = 22
+    critical_error += "\n {} tb - {}".format(" " * indent_format, list_tb[0] + ">, ")
+    for i in range(1, len(list_tb)):
+        critical_error += "\n {} {}".format(" " * indent_format, list_tb[i])
+    logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
 
