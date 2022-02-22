@@ -129,6 +129,10 @@ class Api:
         logging.debug("Получение всех новых оповещений для пользователя.")
         return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
 
+    def get_issues(self):
+        logging.debug("Получение задач.")
+        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}'.format(self.server, self.access_token))
+
     def get_repos_issues(self, repo, issues):
         logging.debug("Получение информации о задачи в репозитории.")
         return requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
