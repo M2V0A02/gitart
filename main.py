@@ -403,7 +403,13 @@ class TrayIcon:
 
 
 def crash_script(error_type, value, tb):
-    logging.critical("Название ошибки - {}, значение - {}, tb - {}".format(error_type, value, traceback.extract_tb(tb)))
+    list_tb = str(traceback.extract_tb(tb)).split('>, ')
+    critical_error = "Название ошибки - {}, значение - {},".format(error_type, value)
+    indent_format = 22
+    critical_error += "\n {} tb - {}".format(" " * indent_format, list_tb[0] + ">, ")
+    for i in range(1, len(list_tb)):
+        critical_error += "\n {} {}".format(" " * indent_format, list_tb[i])
+    logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
 
