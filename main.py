@@ -22,12 +22,14 @@ from PyQt5.QtWinExtras import QtWin
 class Notification:
     def __init__(self, api, tray):
         self.tray = tray
-        self.scroll = QScrollArea()
-        self.scroll.setFixedSize(800, 800)
-        self.scroll.setWindowTitle("Новые сообщения")
+        self.main_window = QMainWindow()
+        self.scroll = QScrollArea(self.main_window)
+        self.main_window.setFixedSize(800, 800)
+        self.scroll.setGeometry(QtCore.QRect(0, 25, 800, 800))
+        self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
         icon = QIcon('img/logo.svg')
-        self.scroll.setWindowIcon(icon)
+        self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
         self.notification_ui = []
@@ -89,6 +91,13 @@ class Notification:
         self.notification_ui = []
         self.layout = QVBoxLayout()
         self.window = QWidget()
+        self.menu_bar = self.main_window.menuBar()
+        self.menu = QMenu('Задачи')
+        self.menu_notification = QAction('Новые сообщения')
+        self.menu.addAction(self.menu_notification)
+        self.menu_tasks = QAction("Назначенно вам")
+        self.menu.addAction(self.menu_tasks)
+        self.menu_bar.addMenu(self.menu)
         layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
@@ -103,11 +112,11 @@ class Notification:
         self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
-        self.scroll.show()
+        self.main_window.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.scroll.frameSize().width(), self.scroll.frameSize().height())
-        self.scroll.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
+        window_size = (self.main_window.frameSize().width(), self.main_window.frameSize().height())
+        self.main_window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def update(self):
