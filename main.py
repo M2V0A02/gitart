@@ -452,12 +452,13 @@ class TrayIcon:
 
 
 def crash_script(error_type, value, tb):
-    list_tb = str(traceback.extract_tb(tb)).split('>, ')
-    critical_error = "Название ошибки - {}, значение - {},".format(error_type, value)
-    indent_format = 22
-    critical_error += "\n {} tb - {}".format(" " * indent_format, list_tb[0] + ">, ")
-    for i in range(1, len(list_tb)):
-        critical_error += "\n {} {}".format(" " * indent_format, list_tb[i])
+    traces = traceback.extract_tb(tb)
+    critical_error = "Название ошибки - {}, значение - {},  \n".format(error_type, value)
+    indent_format = 24
+    for frame_summary in traces:
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
+                                                        frame_summary.name, " " * indent_format,
+                                                        frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
@@ -466,11 +467,12 @@ def main():
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
-    if not (os.path.exists('logs')):
-        os.mkdir('logs')
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
+    if not (os.path.exists('logs')):
+        os.mkdir('logs')
+    1 / 0
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
