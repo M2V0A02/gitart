@@ -150,12 +150,9 @@ class Notification:
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
         self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
+
+    def show(self):
         self.main_window.show()
-        screen_geometry = QApplication.desktop().availableGeometry()
-        screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.main_window.frameSize().width(), self.main_window.frameSize().height())
-        self.main_window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
-                         int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
     def update_notifications(self):
         self.create_window_notification(self.tray.get_notifications())
@@ -321,6 +318,7 @@ class TrayIcon:
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
+        self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
@@ -367,8 +365,8 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            self.window_notification = Notification(self.api, self)
             self.window_notification.create_window_notification(self.notifications)
+            self.window_notification.show()
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
