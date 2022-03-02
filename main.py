@@ -25,15 +25,61 @@ class Notification:
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
         self.main_window.setFixedSize(800, 800)
-        self.scroll.setGeometry(QtCore.QRect(0, 25, 800, 800))
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.layout.setGeometry(QtCore.QRect(10, 10, 0, 0))
-        self.notification_ui = []
+        self.ui = []
         self.api = api
+        self.menu_bar = self.main_window.menuBar()
+        self.menu = QMenu('Задачи')
+        self.menu_notification = QAction('Новые сообщения', )
+        self.menu_notification.triggered.connect(self.update_notifications)
+        self.menu.addAction(self.menu_notification)
+        self.menu_tasks = QAction("Назначенно вам")
+        self.menu_tasks.triggered.connect(self.create_window_tasks)
+        self.menu.addAction(self.menu_tasks)
+        self.menu_bar.addMenu(self.menu)
+
+    def clear_window(self):
+        self.ui = []
+        self.layout = QVBoxLayout()
+        self.window = QWidget()
+
+    def create_window_tasks(self):
+        self.clear_window()
+        issues = json.loads(self.api.get_issues().text)
+        label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
+        label.setStyleSheet("font-size:24px;")
+        self.layout.addWidget(label)
+        for i in range(len(issues)):
+            label = QLabel(issues[i]['title'])
+            label.setStyleSheet("font-size:16px;")
+            div = QWidget()
+            layout = QVBoxLayout(div)
+            div.setStyleSheet("margin-left:15px;")
+            layout.addWidget(label)
+            self.ui.append(label)
+            task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
+            label = QLabel("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['repository']['name']))
+            label.setStyleSheet("font-size:12px;")
+            layout.addWidget(label)
+            if not(issues[i]['milestone'] is None):
+                label = QLabel("Этап: {}".format(issues[i]['milestone']['title']))
+                layout.addWidget(label)
+            button = QPushButton("Перейти в {}".format(issues[i]['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(issues[i]['html_url'])
+            button.clicked.connect(open_tasks)
+            button.setStyleSheet(
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede")
+            self.ui.append(button)
+            layout.addWidget(button)
+            self.layout.addWidget(div)
+        self.layout.addStretch()
+        self.window.setLayout(self.layout)
+        self.scroll.setWidget(self.window)
+        self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
 
     def get_additional_information(self, notifications):
         if not (notifications['subject']['latest_comment_url'] == ''):
@@ -50,16 +96,16 @@ class Notification:
             return notification
 
     def formatting_the_date(self, date):
-        date = datetime.datetime.strptime(date['created_at'], '%Y-%m-%dT%H:%M:%SZ')
+        date = datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
         timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
         timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
         date = date + datetime.timedelta(hours=timezone)
-        return date.strftime('%H:%M %d-%m-%Y')
+        return date
 
     def show_notifications(self, notifications):
         for i in range(len(notifications)):
             notification = self.get_additional_information(notifications[i])
-            date = self.formatting_the_date(notification)
+            date = self.formatting_the_date(notification['created_at'])
             tasks = notifications[i]['subject']['title']
             if len(tasks) > 11:
                 tasks = "{}...".format(tasks[0:11])
@@ -68,16 +114,16 @@ class Notification:
                                                      'issues/', ''), str(tasks))
             label = QLabel(
                 'Пользователь: {}, репозиторий: {}, время создания: {}.'.format(notification['user']['login'], repo,
-                                                                                date))
+                                                                                date.strftime('%H:%M %d-%m-%Y')))
             label.setStyleSheet("font-size:12px;")
             self.layout.addWidget(label)
-            self.notification_ui.append(label)
+            self.ui.append(label)
             plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['body']))
             plain_text.setReadOnly(True)
             plain_text.setFixedSize(750, 75)
             self.layout.addWidget(plain_text)
-            self.notification_ui.append(plain_text)
-            open_notification = self.open_notification(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
+            self.ui.append(plain_text)
+            open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
             button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
                                                                     re.search(r'issues/\d+', notifications[i]['subject']['url'])[
                                                                         0].replace('issues/', '')))
@@ -85,33 +131,25 @@ class Notification:
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
-            self.notification_ui.append(button)
+            self.ui.append(button)
 
     def create_window_notification(self, notifications):
-        self.notification_ui = []
-        self.layout = QVBoxLayout()
-        self.window = QWidget()
-        self.menu_bar = self.main_window.menuBar()
-        self.menu = QMenu('Задачи')
-        self.menu_notification = QAction('Новые сообщения')
-        self.menu.addAction(self.menu_notification)
-        self.menu_tasks = QAction("Назначенно вам")
-        self.menu.addAction(self.menu_tasks)
-        self.menu_bar.addMenu(self.menu)
+        self.clear_window()
         layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
         layout.addWidget(label)
         button = QPushButton("Обновить")
         button.setStyleSheet("max-width:75px; min-width:75px;")
-        button.clicked.connect(self.update)
+        button.clicked.connect(self.update_notifications)
         layout.addWidget(button)
         self.layout.addLayout(layout)
-        self.notification_ui.append(label)
+        self.ui.append(label)
         self.show_notifications(notifications)
         self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
+        self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
         self.main_window.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
@@ -119,10 +157,10 @@ class Notification:
         self.main_window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
                          int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
 
-    def update(self):
+    def update_notifications(self):
         self.create_window_notification(self.tray.get_notifications())
 
-    def open_notification(self, url):
+    def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
         return lambda: webbrowser.open_new(url)
 
@@ -140,7 +178,7 @@ class Api:
 
     def get_issues(self):
         logging.debug("Получение задач.")
-        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}'.format(self.server, self.access_token))
+        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server, self.access_token))
 
     def get_repos_issues(self, repo, issues):
         logging.debug("Получение информации о задачи в репозитории.")
