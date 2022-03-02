@@ -1,5 +1,4 @@
 import traceback
-
 import PyQt5.QtSvg
 from PyQt5 import Qt
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -150,12 +149,11 @@ class Notification:
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
         self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
+
+    def show(self):
         self.main_window.show()
-        screen_geometry = QApplication.desktop().availableGeometry()
-        screen_size = (screen_geometry.width(), screen_geometry.height())
-        window_size = (self.main_window.frameSize().width(), self.main_window.frameSize().height())
-        self.main_window.move(int(screen_size[0] / 2) - int(window_size[0] / 2),
-                         int(screen_size[1] / 2) - int(window_size[1] / 2) - 20)
+        if self.main_window.isMinimized():
+            self.main_window.showNormal()
 
     def update_notifications(self):
         self.create_window_notification(self.tray.get_notifications())
@@ -321,6 +319,7 @@ class TrayIcon:
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
+        self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
@@ -367,8 +366,8 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            self.window_notification = Notification(self.api, self)
             self.window_notification.create_window_notification(self.notifications)
+            self.window_notification.show()
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and self.tray.authorization:  # Левая кнопка мыши
@@ -453,12 +452,13 @@ class TrayIcon:
 
 
 def crash_script(error_type, value, tb):
-    list_tb = str(traceback.extract_tb(tb)).split('>, ')
-    critical_error = "Название ошибки - {}, значение - {},".format(error_type, value)
-    indent_format = 22
-    critical_error += "\n {} tb - {}".format(" " * indent_format, list_tb[0] + ">, ")
-    for i in range(1, len(list_tb)):
-        critical_error += "\n {} {}".format(" " * indent_format, list_tb[i])
+    traces = traceback.extract_tb(tb)
+    critical_error = "Название ошибки - {}, значение - {},  \n".format(error_type, value)
+    indent_format = 24
+    for frame_summary in traces:
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
+                                                        frame_summary.name, " " * indent_format,
+                                                        frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
@@ -467,11 +467,12 @@ def main():
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
-    if not (os.path.exists('logs')):
-        os.mkdir('logs')
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
+    if not (os.path.exists('logs')):
+        os.mkdir('logs')
+    1 / 0
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
