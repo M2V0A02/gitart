@@ -1,5 +1,4 @@
 import traceback
-
 import PyQt5.QtSvg
 from PyQt5 import Qt
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -153,6 +152,8 @@ class Notification:
 
     def show(self):
         self.main_window.show()
+        if self.main_window.isMinimized():
+            self.main_window.showNormal()
 
     def update_notifications(self):
         self.create_window_notification(self.tray.get_notifications())
