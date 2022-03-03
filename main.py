@@ -137,8 +137,7 @@ class Notification:
             notification = self.get_additional_information(notifications[i])
             date = self.formatting_the_date(notification['created_at'])
             tasks = notifications[i]['subject']['title']
-            if len(tasks) > 11:
-                tasks = "{}...".format(tasks[0:11])
+            tasks = cut_the_string(tasks, 15)
             repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'],
                                                  re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace(
                                                      'issues/', ''), str(tasks))
