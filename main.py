@@ -453,7 +453,8 @@ class TrayIcon:
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
-    critical_error = "Название ошибки - {}, значение - {},  \n".format(error_type, value)
+    print(vars(error_type))
+    critical_error = "{}: {},  \n".format(error_type, value)
     indent_format = 24
     for frame_summary in traces:
         critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
