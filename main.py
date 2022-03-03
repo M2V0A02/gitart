@@ -1,7 +1,6 @@
 import traceback
 import PyQt5.QtSvg
-from PyQt5 import Qt
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -20,13 +19,13 @@ from PyQt5.QtWinExtras import QtWin
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
-    print(vars(error_type))
     critical_error = "{}: {},  \n".format(error_type, value)
     indent_format = 24
     for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
-                                                        frame_summary.name, " " * indent_format,
-                                                        frame_summary.line)
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename,
+                                                                           frame_summary.lineno,
+                                                                           frame_summary.name, " " * indent_format,
+                                                                           frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
@@ -85,7 +84,9 @@ class Notification:
             layout.addWidget(label)
             self.ui.append(label)
             task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['user']['login']), 60)
+            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'],
+                                                                task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                issues[i]['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
@@ -96,7 +97,8 @@ class Notification:
             open_tasks = self.open_url(issues[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
+                "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             self.ui.append(button)
             layout.addWidget(button)
             layout_message.addWidget(div)
@@ -157,7 +159,8 @@ class Notification:
                                                                     re.search(r'issues/\d+', notifications[i]['subject']['url'])[
                                                                         0].replace('issues/', '')))
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
+                " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
             self.ui.append(button)
@@ -487,7 +490,8 @@ def main():
     sys.excepthook = crash_script
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
-    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
+    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
+                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     if not (os.path.exists('logs')):
         os.mkdir('logs')
     logging.info("Запуск программы")
