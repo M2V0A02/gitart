@@ -18,6 +18,27 @@ import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
 
 
+def crash_script(error_type, value, tb):
+    traces = traceback.extract_tb(tb)
+    print(vars(error_type))
+    critical_error = "{}: {},  \n".format(error_type, value)
+    indent_format = 24
+    for frame_summary in traces:
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
+                                                        frame_summary.name, " " * indent_format,
+                                                        frame_summary.line)
+    logging.critical(critical_error)
+    sys.__excepthook__(error_type, value, tb)
+
+
+def cut_the_string(string, length):
+    if len(string) < 3:
+        return string
+    if len(string) > length:
+        string = '{}...'.format(string[0:length - 3])
+    return string
+
+
 class Notification:
     def __init__(self, api, tray):
         self.tray = tray
@@ -458,19 +479,6 @@ class TrayIcon:
         self.config.save_settings(to_yaml)
         self.set_icon('img/icon.png')
         self.constructor_menu()
-
-
-def crash_script(error_type, value, tb):
-    traces = traceback.extract_tb(tb)
-    print(vars(error_type))
-    critical_error = "{}: {},  \n".format(error_type, value)
-    indent_format = 24
-    for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
-                                                        frame_summary.name, " " * indent_format,
-                                                        frame_summary.line)
-    logging.critical(critical_error)
-    sys.__excepthook__(error_type, value, tb)
 
 
 def main():
