@@ -115,10 +115,9 @@ class Notification:
 
     def get_additional_information(self, notifications):
         if not (notifications['subject']['latest_comment_url'] == ''):
-            return json.loads(self.api.get_comment(
-                re.search(r'comments/\d+', format(notifications['subject']['latest_comment_url']))[0].replace(
-                    'comments/',
-                    '')).text)
+            id_comments = re.search(r'comments/\d+', format(notifications['subject']
+                                                            ['latest_comment_url']))[0].replace('comments/', '')
+            return json.loads(self.api.get_comment(id_comments)).text
         else:
             repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
                 '/issues', '')
@@ -140,9 +139,8 @@ class Notification:
             date = self.formatting_the_date(notification['created_at'])
             tasks = notifications[i]['subject']['title']
             tasks = cut_the_string(tasks, 15)
-            repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'],
-                                                 re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace(
-                                                     'issues/', ''), str(tasks))
+            tasks_number = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
+            repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'], tasks_number, str(tasks))
             label = QLabel(
                 'Пользователь: {}, репозиторий: {}, время создания: {}.'.format(notification['user']['login'], repo,
                                                                                 date.strftime('%H:%M %d-%m-%Y')))
@@ -155,9 +153,9 @@ class Notification:
             self.layout.addWidget(plain_text)
             self.ui.append(plain_text)
             open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
+            number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
             button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
-                                                                    re.search(r'issues/\d+', notifications[i]['subject']['url'])[
-                                                                        0].replace('issues/', '')))
+                                                                    number_issues))
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
                 " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
