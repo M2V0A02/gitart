@@ -96,7 +96,7 @@ class Notification:
             open_tasks = self.open_url(issues[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             self.ui.append(button)
             layout.addWidget(button)
             layout_message.addWidget(div)
