@@ -1,7 +1,6 @@
 import traceback
 import PyQt5.QtSvg
-from PyQt5 import Qt
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -16,6 +15,27 @@ import re
 import threading
 import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
+
+
+def crash_script(error_type, value, tb):
+    traces = traceback.extract_tb(tb)
+    critical_error = "{}: {},  \n".format(error_type, value)
+    indent_format = 24
+    for frame_summary in traces:
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename,
+                                                                           frame_summary.lineno,
+                                                                           frame_summary.name, " " * indent_format,
+                                                                           frame_summary.line)
+    logging.critical(critical_error)
+    sys.__excepthook__(error_type, value, tb)
+
+
+def cut_the_string(string, length):
+    if len(string) < 3:
+        return string
+    if len(string) > length:
+        string = '{}...'.format(string[0:length - 3])
+    return string
 
 
 class Notification:
@@ -52,29 +72,42 @@ class Notification:
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
         self.layout.addWidget(label)
+        number_of_messages_per_line = 2
+        layout_message = QHBoxLayout()
+        y = 1
         for i in range(len(issues)):
-            label = QLabel(issues[i]['title'])
-            label.setStyleSheet("font-size:16px;")
+            label = QLabel(cut_the_string(issues[i]['title'], 50))
+            label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
-            div.setStyleSheet("margin-left:15px;")
+            div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             self.ui.append(label)
             task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            label = QLabel("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['repository']['name']))
+            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'],
+                                                                task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                issues[i]['user']['login']), 60)
+            label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
             if not(issues[i]['milestone'] is None):
-                label = QLabel("Этап: {}".format(issues[i]['milestone']['title']))
+                label = QLabel(cut_the_string("Этап: {}".format(issues[i]['milestone']['title']), 50))
                 layout.addWidget(label)
             button = QPushButton("Перейти в {}".format(issues[i]['html_url'].replace("http://", '')))
             open_tasks = self.open_url(issues[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
+                "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             self.ui.append(button)
             layout.addWidget(button)
-            self.layout.addWidget(div)
+            layout_message.addWidget(div)
+            y = i
+            if (i + 1) % number_of_messages_per_line == 0:
+                self.layout.addLayout(layout_message)
+                layout_message = QHBoxLayout()
+        if not(y + 1 % number_of_messages_per_line == 0):
+            self.layout.addLayout(layout_message)
         self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
@@ -106,8 +139,7 @@ class Notification:
             notification = self.get_additional_information(notifications[i])
             date = self.formatting_the_date(notification['created_at'])
             tasks = notifications[i]['subject']['title']
-            if len(tasks) > 11:
-                tasks = "{}...".format(tasks[0:11])
+            tasks = cut_the_string(tasks, 15)
             repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'],
                                                  re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace(
                                                      'issues/', ''), str(tasks))
@@ -127,7 +159,8 @@ class Notification:
                                                                     re.search(r'issues/\d+', notifications[i]['subject']['url'])[
                                                                         0].replace('issues/', '')))
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
+                " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             self.layout.addWidget(button)
             self.ui.append(button)
@@ -451,28 +484,16 @@ class TrayIcon:
         self.constructor_menu()
 
 
-def crash_script(error_type, value, tb):
-    traces = traceback.extract_tb(tb)
-    critical_error = "Название ошибки - {}, значение - {},  \n".format(error_type, value)
-    indent_format = 24
-    for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename, frame_summary.lineno,
-                                                        frame_summary.name, " " * indent_format,
-                                                        frame_summary.line)
-    logging.critical(critical_error)
-    sys.__excepthook__(error_type, value, tb)
-
-
 def main():
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
-    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date), level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
+    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
+                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     if not (os.path.exists('logs')):
         os.mkdir('logs')
-    1 / 0
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
