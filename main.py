@@ -52,16 +52,19 @@ class Notification:
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
         self.layout.addWidget(label)
+        number_of_messages_per_line = 2
+        layout_message = QHBoxLayout()
+        y = 1
         for i in range(len(issues)):
             label = QLabel(issues[i]['title'])
-            label.setStyleSheet("font-size:16px;")
+            label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
-            div.setStyleSheet("margin-left:15px;")
+            div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             self.ui.append(label)
             task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            label = QLabel("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['repository']['name']))
+            label = QLabel("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['user']['login']))
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
             if not(issues[i]['milestone'] is None):
@@ -74,7 +77,13 @@ class Notification:
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius: .28571429rem; height: 20px; border-color: #dedede")
             self.ui.append(button)
             layout.addWidget(button)
-            self.layout.addWidget(div)
+            layout_message.addWidget(div)
+            y = i
+            if (i + 1) % number_of_messages_per_line == 0:
+                self.layout.addLayout(layout_message)
+                layout_message = QHBoxLayout()
+        if not(y + 1 % number_of_messages_per_line == 0):
+            self.layout.addLayout(layout_message)
         self.layout.addStretch()
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
