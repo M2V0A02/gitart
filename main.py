@@ -77,7 +77,7 @@ class Notification:
         layout_message = QHBoxLayout()
         y = 1
         for i in range(len(issues)):
-            label = QLabel(issues[i]['title'])
+            label = QLabel(cut_the_string(issues[i]['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
@@ -85,11 +85,12 @@ class Notification:
             layout.addWidget(label)
             self.ui.append(label)
             task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            label = QLabel("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['user']['login']))
+            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'], task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'), issues[i]['user']['login']), 60)
+            label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
             if not(issues[i]['milestone'] is None):
-                label = QLabel("Этап: {}".format(issues[i]['milestone']['title']))
+                label = QLabel(cut_the_string("Этап: {}".format(issues[i]['milestone']['title']), 50))
                 layout.addWidget(label)
             button = QPushButton("Перейти в {}".format(issues[i]['html_url'].replace("http://", '')))
             open_tasks = self.open_url(issues[i]['html_url'])
