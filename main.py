@@ -114,17 +114,18 @@ class Notification:
         self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
 
     def get_additional_information(self, notifications):
+        addititonal_information = dict()
         if not (notifications['subject']['latest_comment_url'] == ''):
             id_comments = re.search(r'comments/\d+', format(notifications['subject']
                                                             ['latest_comment_url']))[0].replace('comments/', '')
-            return json.loads(self.api.get_comment(id_comments).text)
-        else:
+            addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
+        if not(notifications['subject']['url'] == ''):
             repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
                 '/issues', '')
             issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
             notification = json.loads(self.api.get_repos_issues(repo, issues).text)
-            notification['body'] = 'новая задача'
-            return notification
+            addititonal_information['user_login'] = (notification['user']['login'])
+        return addititonal_information
 
     def formatting_the_date(self, date):
         date = datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
@@ -135,23 +136,24 @@ class Notification:
 
     def show_notifications(self, notifications):
         for i in range(len(notifications)):
-            notification = self.get_additional_information(notifications[i])
-            date = self.formatting_the_date(notification['created_at'])
+            additional_information = self.get_additional_information(notifications[i])
             tasks = notifications[i]['subject']['title']
-            tasks = cut_the_string(tasks, 15)
-            tasks_number = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
-            repo = " {}, задача #{} - {}".format(notifications[i]['repository']['full_name'], tasks_number, str(tasks))
-            label = QLabel(
-                'Пользователь: {}, репозиторий: {}, время создания: {}.'.format(notification['user']['login'], repo,
-                                                                                date.strftime('%H:%M %d-%m-%Y')))
+            repo = notifications[i]['repository']['full_name']
+            created_time = str(self.formatting_the_date(notifications[i]['repository']['owner']['created']))
+            text_title = 'Репозиторий: {}, время создания: {}'.format(repo, created_time)
+            if 'user_login' in additional_information:
+                text_title = cut_the_string("{}, пользователь - {}.".format(text_title,
+                                                                            additional_information['user_login']), 130)
+            label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             self.layout.addWidget(label)
             self.ui.append(label)
-            plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['body']))
-            plain_text.setReadOnly(True)
-            plain_text.setFixedSize(750, 75)
-            self.layout.addWidget(plain_text)
-            self.ui.append(plain_text)
+            if 'body' in additional_information:
+                plain_text = QPlainTextEdit('Сообщение: {}.'.format(additional_information['body']))
+                plain_text.setReadOnly(True)
+                plain_text.setFixedSize(750, 75)
+                self.layout.addWidget(plain_text)
+                self.ui.append(plain_text)
             open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
             number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
             button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
