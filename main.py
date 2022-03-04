@@ -137,7 +137,6 @@ class Notification:
     def show_notifications(self, notifications):
         for i in range(len(notifications)):
             additional_information = self.get_additional_information(notifications[i])
-            tasks = notifications[i]['subject']['title']
             repo = notifications[i]['repository']['full_name']
             created_time = str(self.formatting_the_date(notifications[i]['repository']['owner']['created']))
             text_title = 'Репозиторий: {}, время создания: {}'.format(repo, created_time)
@@ -167,7 +166,6 @@ class Notification:
 
     def create_window_notification(self):
         notifications = json.loads(self.api.get_notifications().text)
-        print(notifications)
         self.clear_window()
         layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
