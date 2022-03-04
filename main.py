@@ -117,7 +117,7 @@ class Notification:
         if not (notifications['subject']['latest_comment_url'] == ''):
             id_comments = re.search(r'comments/\d+', format(notifications['subject']
                                                             ['latest_comment_url']))[0].replace('comments/', '')
-            return json.loads(self.api.get_comment(id_comments)).text
+            return json.loads(self.api.get_comment(id_comments).text)
         else:
             repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
                 '/issues', '')
@@ -163,7 +163,9 @@ class Notification:
             self.layout.addWidget(button)
             self.ui.append(button)
 
-    def create_window_notification(self, notifications):
+    def create_window_notification(self):
+        notifications = json.loads(self.api.get_notifications().text)
+        print(notifications)
         self.clear_window()
         layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
@@ -187,7 +189,7 @@ class Notification:
             self.main_window.showNormal()
 
     def update_notifications(self):
-        self.create_window_notification(self.tray.get_notifications())
+        self.create_window_notification()
 
     def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
@@ -207,7 +209,8 @@ class Api:
 
     def get_issues(self):
         logging.debug("Получение задач.")
-        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server, self.access_token))
+        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+                                                                                                    self.access_token))
 
     def get_repos_issues(self, repo, issues):
         logging.debug("Получение информации о задачи в репозитории.")
@@ -215,7 +218,8 @@ class Api:
 
     def get_comment(self, comment):
         logging.debug("Получение  комментария")
-        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server, comment))
+        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+                                                                                                         comment))
 
     def get_user(self):
         try:
@@ -228,7 +232,8 @@ class Api:
             msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
         except requests.exceptions.InvalidURL:
-            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}".format(self.server,self.access_token)))
+            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}"
+                                                             .format(self.server, self.access_token)))
             msg = QMessageBox()
             msg.setText('Server - пустой')
             msg.exec()
@@ -378,9 +383,6 @@ class TrayIcon:
         with open("img/{}.jpg".format(str(json.loads(response.text)['id'])), "wb") as out:
             out.write(resource.content)
 
-    def get_notifications(self):
-        return self.notifications
-
     def animation(self):
         response = self.api.get_user()
         user = json.loads(response.text)
@@ -397,7 +399,7 @@ class TrayIcon:
         if len(self.notifications) == 0:
             self.tray.setToolTip('Новых сообщений нет')
         else:
-            self.window_notification.create_window_notification(self.notifications)
+            self.window_notification.create_window_notification()
             self.window_notification.show()
 
     def controller_tray_icon(self, trigger):
