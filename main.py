@@ -72,11 +72,11 @@ class Notification:
         layout = QHBoxLayout()
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
-        layout.addWidget(layout)
+        layout.addWidget(label)
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
         layout.addWidget(button)
-        self.layout.addWidget(label)
+        self.layout.addLayout(layout)
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
