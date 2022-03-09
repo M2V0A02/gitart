@@ -1,3 +1,4 @@
+import time
 import traceback
 import PyQt5.QtSvg
 from PyQt5 import QtCore, QtWidgets
@@ -46,20 +47,19 @@ class Notification:
         self.main_window.setFixedSize(800, 800)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
+        self.timer_change_button_text = QtCore.QTimer()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.ui = []
         self.api = api
         self.menu_bar = self.main_window.menuBar()
-        self.menu = QMenu('Задачи')
         self.menu_notification = QAction('Новые сообщения', )
         self.menu_notification.triggered.connect(self.update_notifications)
-        self.menu.addAction(self.menu_notification)
+        self.menu_bar.addAction(self.menu_notification)
         self.menu_tasks = QAction("Назначенно вам")
         self.menu_tasks.triggered.connect(self.create_window_tasks)
-        self.menu.addAction(self.menu_tasks)
-        self.menu_bar.addMenu(self.menu)
+        self.menu_bar.addAction(self.menu_tasks)
 
     def clear_window(self):
         self.ui = []
@@ -69,12 +69,24 @@ class Notification:
     def create_window_tasks(self):
         self.clear_window()
         issues = json.loads(self.api.get_issues().text)
+        user = json.loads(self.api.get_user().text)
+        i = 0
+        while i < len(issues):
+            is_delete = True
+            if not (issues[i]['assignees'] is None):
+                for j in range(len(issues[i]['assignees'])):
+                    if issues[i]['assignees'][j]['login'] == user['login']:
+                        is_delete = False
+            if is_delete:
+                issues.pop(i)
+                i = i - 1
+            i += 1
         layout = QHBoxLayout()
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
-        layout.addWidget(label)
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
+        layout.addWidget(label)
         layout.addWidget(button)
         self.layout.addLayout(layout)
         number_of_messages_per_line = 2
@@ -176,10 +188,10 @@ class Notification:
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
         layout.addWidget(label)
-        button = QPushButton("Обновить")
-        button.setStyleSheet("max-width:75px; min-width:75px;")
-        button.clicked.connect(self.update_notifications)
-        layout.addWidget(button)
+        self.update_button = QPushButton("Обновить")
+        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
+        self.update_button.clicked.connect(self.update_notifications)
+        layout.addWidget(self.update_button)
         self.layout.addLayout(layout)
         self.ui.append(label)
         self.show_notifications(notifications)
@@ -194,7 +206,10 @@ class Notification:
             self.main_window.showNormal()
 
     def update_notifications(self):
+        self.timer_change_button_text.timeout.connect(lambda: self.update_button.setText('Обновить'))
         self.create_window_notification()
+        self.update_button.setText("Обновление")
+        self.timer_change_button_text.start(500)
 
     def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
