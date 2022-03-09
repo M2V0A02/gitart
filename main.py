@@ -52,14 +52,12 @@ class Notification:
         self.ui = []
         self.api = api
         self.menu_bar = self.main_window.menuBar()
-        self.menu = QMenu('Задачи')
         self.menu_notification = QAction('Новые сообщения', )
         self.menu_notification.triggered.connect(self.update_notifications)
-        self.menu.addAction(self.menu_notification)
+        self.menu_bar.addAction(self.menu_notification)
         self.menu_tasks = QAction("Назначенно вам")
         self.menu_tasks.triggered.connect(self.create_window_tasks)
-        self.menu.addAction(self.menu_tasks)
-        self.menu_bar.addMenu(self.menu)
+        self.menu_bar.addAction(self.menu_tasks)
 
     def clear_window(self):
         self.ui = []
