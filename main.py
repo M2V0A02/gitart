@@ -1,3 +1,4 @@
+import time
 import traceback
 import PyQt5.QtSvg
 from PyQt5 import QtCore, QtWidgets
@@ -46,6 +47,7 @@ class Notification:
         self.main_window.setFixedSize(800, 800)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
+        self.timer_change_button_text = QtCore.QTimer()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
@@ -174,10 +176,10 @@ class Notification:
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
         layout.addWidget(label)
-        button = QPushButton("Обновить")
-        button.setStyleSheet("max-width:75px; min-width:75px;")
-        button.clicked.connect(self.update_notifications)
-        layout.addWidget(button)
+        self.update_button = QPushButton("Обновить")
+        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
+        self.update_button.clicked.connect(self.update_notifications)
+        layout.addWidget(self.update_button)
         self.layout.addLayout(layout)
         self.ui.append(label)
         self.show_notifications(notifications)
@@ -192,7 +194,10 @@ class Notification:
             self.main_window.showNormal()
 
     def update_notifications(self):
+        self.timer_change_button_text.timeout.connect(lambda: self.update_button.setText('Обновить'))
         self.create_window_notification()
+        self.update_button.setText("Обновление")
+        self.timer_change_button_text.start(500)
 
     def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
