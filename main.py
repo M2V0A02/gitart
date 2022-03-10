@@ -44,7 +44,7 @@ class Notification:
         self.tray = tray
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
-        self.main_window.setFixedSize(800, 800)
+        self.main_window.setFixedSize(830, 830)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
         self.timer_change_button_text = QtCore.QTimer()
@@ -53,21 +53,28 @@ class Notification:
         self.layout = QVBoxLayout()
         self.ui = []
         self.api = api
-        self.menu_bar = self.main_window.menuBar()
-        self.menu_notification = QAction('Новые сообщения', )
-        self.menu_notification.triggered.connect(self.update_notifications)
-        self.menu_bar.addAction(self.menu_notification)
-        self.menu_tasks = QAction("Назначенно вам")
-        self.menu_tasks.triggered.connect(self.create_window_tasks)
-        self.menu_bar.addAction(self.menu_tasks)
+        self.notifications_scroll_area = QScrollArea()
+        self.tasks_scroll_area = QScrollArea()
+        self.tab_widget = QTabWidget()
+        self.tab_widget.addTab(self.notifications_scroll_area, 'Новые задачи')
+        self.tab_widget.addTab(self.tasks_scroll_area, 'Назначено вам')
+        self.tab_widget.tabBarClicked.connect(self.controller_tab_clicked)
+        self.layout.addWidget(self.tab_widget)
+        self.window.resize(825, 825)
+        self.window.setLayout(self.layout)
+        self.scroll.setWidget(self.window)
+        self.scroll.resize(830, 830)
 
-    def clear_window(self):
-        self.ui = []
-        self.layout = QVBoxLayout()
-        self.window = QWidget()
+    def controller_tab_clicked(self, number_tab):
+        if number_tab == 0:
+            self.create_window_notification()
+        if number_tab == 1:
+            self.create_window_tasks()
 
     def create_window_tasks(self):
-        self.clear_window()
+        widget = QWidget()
+        main_layout = QVBoxLayout()
+        layout = QHBoxLayout()
         issues = json.loads(self.api.get_issues().text)
         user = json.loads(self.api.get_user().text)
         i = 0
@@ -81,14 +88,13 @@ class Notification:
                 issues.pop(i)
                 i = i - 1
             i += 1
-        layout = QHBoxLayout()
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
         layout.addWidget(label)
         layout.addWidget(button)
-        self.layout.addLayout(layout)
+        main_layout.addLayout(layout)
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
@@ -121,14 +127,14 @@ class Notification:
             layout_message.addWidget(div)
             y = i
             if (i + 1) % number_of_messages_per_line == 0:
-                self.layout.addLayout(layout_message)
+                main_layout.addLayout(layout_message)
                 layout_message = QHBoxLayout()
         if not(y + 1 % number_of_messages_per_line == 0):
-            self.layout.addLayout(layout_message)
-        self.layout.addStretch()
-        self.window.setLayout(self.layout)
-        self.scroll.setWidget(self.window)
-        self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
+            main_layout.addLayout(layout_message)
+        main_layout.addStretch()
+        widget.setLayout(main_layout)
+        self.tasks_scroll_area.setWidget(widget)
+        self.tab_widget.update()
 
     def get_additional_information(self, notifications):
         addititonal_information = dict()
@@ -151,7 +157,7 @@ class Notification:
         date = date + datetime.timedelta(hours=timezone)
         return date
 
-    def show_notifications(self, notifications):
+    def show_notifications(self, notifications, main_layout):
         for i in range(len(notifications)):
             additional_information = self.get_additional_information(notifications[i])
             repo = notifications[i]['repository']['full_name']
@@ -162,13 +168,13 @@ class Notification:
                                                                             additional_information['user_login']), 130)
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
-            self.layout.addWidget(label)
+            main_layout.addWidget(label)
             self.ui.append(label)
             if 'body' in additional_information:
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(additional_information['body']))
                 plain_text.setReadOnly(True)
-                plain_text.setFixedSize(750, 75)
-                self.layout.addWidget(plain_text)
+                plain_text.setFixedSize(740, 75)
+                main_layout.addWidget(plain_text)
                 self.ui.append(plain_text)
             open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
             number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
@@ -178,12 +184,13 @@ class Notification:
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
                 " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
-            self.layout.addWidget(button)
+            main_layout.addWidget(button)
             self.ui.append(button)
 
     def create_window_notification(self):
         notifications = json.loads(self.api.get_notifications().text)
-        self.clear_window()
+        widget = QWidget()
+        main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
@@ -192,13 +199,13 @@ class Notification:
         self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
-        self.layout.addLayout(layout)
+        main_layout.addLayout(layout)
         self.ui.append(label)
-        self.show_notifications(notifications)
-        self.layout.addStretch()
-        self.window.setLayout(self.layout)
-        self.scroll.setWidget(self.window)
-        self.scroll.setGeometry(QtCore.QRect(0, 20, 800, 780))
+        self.show_notifications(notifications, main_layout)
+        main_layout.addStretch()
+        widget.setLayout(main_layout)
+        self.notifications_scroll_area.setWidget(widget)
+        self.tab_widget.update()
 
     def show(self):
         self.main_window.show()
