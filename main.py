@@ -74,19 +74,17 @@ class Notification:
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
+        # убираю из списка задач мои, чтобы остались только назначенные.
+        def filter_issues(issue):
+            if not (issue['assignees'] is None):
+                for j in range(len(issue['assignees'])):
+                    if issue['assignees'][j]['login'] == user['login']:
+                        return True
+            return False
         issues = json.loads(self.api.get_issues().text)
         user = json.loads(self.api.get_user().text)
-        i = 0
-        while i < len(issues):
-            is_delete = True
-            if not (issues[i]['assignees'] is None):
-                for j in range(len(issues[i]['assignees'])):
-                    if issues[i]['assignees'][j]['login'] == user['login']:
-                        is_delete = False
-            if is_delete:
-                issues.pop(i)
-                i = i - 1
-            i += 1
+        issues = filter(filter_issues, issues)
+        issues = list(issues)
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
