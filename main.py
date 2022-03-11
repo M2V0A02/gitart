@@ -75,6 +75,7 @@ class Notification:
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         # убираю из списка задач мои, чтобы остались только назначенные.
+
         def filter_issues(issue):
             if not (issue['assignees'] is None):
                 for j in range(len(issue['assignees'])):
