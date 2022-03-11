@@ -47,7 +47,6 @@ class Notification:
         self.main_window.setFixedSize(830, 830)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
-        self.timer_change_button_text = QtCore.QTimer()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
@@ -215,10 +214,7 @@ class Notification:
             self.main_window.showNormal()
 
     def update_notifications(self):
-        self.timer_change_button_text.timeout.connect(lambda: self.update_button.setText('Обновить'))
         self.create_window_notification()
-        self.update_button.setText("Обновление")
-        self.timer_change_button_text.start(500)
 
     def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
