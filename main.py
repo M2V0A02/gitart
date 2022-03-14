@@ -231,47 +231,39 @@ class Api:
         self.access_token = access_token
 
     @staticmethod
-    def debug_date(request, debug_string):
-        request_text = json.loads(request.text)
-        for i in range(len(request_text)):
-            debug_string += str(request_text[i]) + ",\n" + indent_format
+    def debug_date(response, debug_string):
+        response_text = json.loads(response.text)
+        for i in range(len(response_text)):
+            debug_string += str(response_text[i]) + ",\n" + indent_format
         debug_string += debug_string[0:len(debug_string) - 1] + "."
         logging.debug(debug_string)
 
     def get_notifications(self):
-        request = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
-        request_text = json.loads(request.text)
-        debug_string = "Получение новых сообщений для пользователя: "
-        for i in range(len(request_text)):
-            debug_string += str(request_text[i]) + ",\n" + indent_format
-        debug_string += debug_string[0:len(debug_string) - 1] + "."
-        logging.debug(debug_string)
-        return request
+        response = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        self.debug_date(response, "Получение новых сообщений для пользователя: ")
+        return response
 
     def get_issues(self):
-        request = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+        response = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
-        request_text = json.loads(request.text)
-        debug_string = "Получение задач для пользователя: "
-        for i in range(len(request_text)):
-            debug_string += str(request_text[i]) + ",\n" + indent_format
-        debug_string += debug_string[0:len(debug_string) - 1] + "."
-        logging.debug(debug_string)
-        return request
+        self.debug_date(response, "Получение задач для пользователя: ")
+        return response
 
     def get_repos_issues(self, repo, issues):
-        logging.debug("Получение информации о задачи в репозитории.")
-        return requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        response = requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        self.debug_date(response, "Получение информации о задачи в репозитории: ")
+        return response
 
     def get_comment(self, comment):
-        logging.debug("Получение  комментария")
-        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
-                                                                                                         comment))
+        response = requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+                                                                                                            comment))
+        self.debug_date(response, "Получение комментария: ")
+        return response
 
     def get_user(self):
         try:
-            logging.debug("Обращение к Api для получение информацию о своей учетной записи.")
             response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
         except requests.exceptions.ConnectionError:
             logging.error('Соединение не установленно имя сервера - {}')
