@@ -241,9 +241,15 @@ class Api:
         return request
 
     def get_issues(self):
-        logging.debug("Получение задач.")
-        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+        request = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
+        request_text = json.loads(request.text)
+        debug_string = "Получение задач для пользователя: "
+        for i in range(len(request_text)):
+            debug_string += str(request_text[i]) + ",\n" + indent_format
+        debug_string += debug_string[0:len(debug_string) - 1] + "."
+        logging.debug(debug_string)
+        return request
 
     def get_repos_issues(self, repo, issues):
         logging.debug("Получение информации о задачи в репозитории.")
