@@ -17,15 +17,18 @@ import threading
 import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
 
+# Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
+indent_format = " " * 24
+
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
-    indent_format = 24
+
     for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename,
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(indent_format, frame_summary.filename,
                                                                            frame_summary.lineno,
-                                                                           frame_summary.name, " " * indent_format,
+                                                                           frame_summary.name, indent_format,
                                                                            frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
@@ -227,31 +230,43 @@ class Api:
         self.server = server
         self.access_token = access_token
 
+    @staticmethod
+    def debug_date(response, debug_string):
+        response_text = json.loads(response.text)
+        for i in range(len(response_text)):
+            debug_string += str(response_text[i]) + ",\n" + indent_format
+        debug_string += debug_string[0:len(debug_string) - 1] + "."
+        logging.debug(debug_string)
+
     def get_notifications(self):
-        logging.debug("Получение всех новых оповещений для пользователя.")
-        return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        response = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        self.debug_date(response, "Получение новых сообщений для пользователя: ")
+        return response
 
     def get_issues(self):
-        logging.debug("Получение задач.")
-        return requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+        response = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
+        self.debug_date(response, "Получение задач для пользователя: ")
+        return response
 
     def get_repos_issues(self, repo, issues):
-        logging.debug("Получение информации о задачи в репозитории.")
-        return requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        response = requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        self.debug_date(response, "Получение информации о задачи в репозитории: ")
+        return response
 
     def get_comment(self, comment):
-        logging.debug("Получение  комментария")
-        return requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
-                                                                                                         comment))
+        response = requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+                                                                                                            comment))
+        self.debug_date(response, "Получение комментария: ")
+        return response
 
     def get_user(self):
         try:
-            logging.debug("Обращение к Api для получение информацию о своей учетной записи.")
             response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
         except requests.exceptions.ConnectionError:
-            logging.error('Соединение не установленно имя сервера - {}')
+            logging.error('Соединение не установленно имя сервера - {}.'.format(self.server))
             msg = QMessageBox()
             msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
@@ -263,7 +278,7 @@ class Api:
             msg.exec()
 
     def set_access_token(self, access_token):
-        logging.debug("Перезапись токена доступа.")
+        logging.debug("Перезапись токена доступа: {}.".format(access_token))
         self.access_token = access_token
 
     def get_access_token(self):
@@ -273,14 +288,14 @@ class Api:
         return self.server
 
     def set_server(self, server):
-        logging.debug("Перезапись адреса сервера.")
+        logging.debug("Перезапись адреса сервера: {}.".format(server))
         self.server = server
 
 
 class Config:
 
     def __init__(self, name):
-        logging.debug("Создание экземпляра класса - конфиг.")
+        logging.debug("Создание экземпляра класса - конфиг, имя: {}.".format(name))
         self.name = name
         if not (os.path.exists(name)):
             to_yaml = {"server": '', "token": '', "delay_notification": "45"}
@@ -288,7 +303,7 @@ class Config:
                 yaml.dump(to_yaml, f_obj)
 
     def save_settings(self, dict_setting):
-        logging.debug("Перезапись  настроек в конфигурационном файле.")
+        logging.debug("Перезапись  настроек в конфигурационном файле, настройки: {}.".format(str(dict_setting)))
         with open(self.name) as f_obj:
             to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         for key, value in dict_setting.items():
@@ -433,14 +448,14 @@ class TrayIcon:
             self.tray.show()
 
     def set_icon(self, icon):
-        logging.debug("Установление изображение для TrayIcon.")
+        logging.debug("Установление изображение для TrayIcon, путь до картинки: {}.".format(icon))
         self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
         self.tray.authorization = True
-        logging.debug("TrayIcon: Токен доступа действителен.")
+        logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}.".format(response))
         user = json.loads(response.text)
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
