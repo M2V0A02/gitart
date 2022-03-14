@@ -230,6 +230,14 @@ class Api:
         self.server = server
         self.access_token = access_token
 
+    @staticmethod
+    def debug_date(request, debug_string):
+        request_text = json.loads(request.text)
+        for i in range(len(request_text)):
+            debug_string += str(request_text[i]) + ",\n" + indent_format
+        debug_string += debug_string[0:len(debug_string) - 1] + "."
+        logging.debug(debug_string)
+
     def get_notifications(self):
         request = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
         request_text = json.loads(request.text)
