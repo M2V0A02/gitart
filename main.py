@@ -266,7 +266,7 @@ class Api:
             self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
         except requests.exceptions.ConnectionError:
-            logging.error('Соединение не установленно имя сервера - {}')
+            logging.error('Соединение не установленно имя сервера - {}.'.format(self.server))
             msg = QMessageBox()
             msg.setText('Соединение с сервером, не установлено.')
             msg.exec()
@@ -278,7 +278,7 @@ class Api:
             msg.exec()
 
     def set_access_token(self, access_token):
-        logging.debug("Перезапись токена доступа.")
+        logging.debug("Перезапись токена доступа: {}.".format(access_token))
         self.access_token = access_token
 
     def get_access_token(self):
@@ -288,14 +288,14 @@ class Api:
         return self.server
 
     def set_server(self, server):
-        logging.debug("Перезапись адреса сервера.")
+        logging.debug("Перезапись адреса сервера: {}.".format(server))
         self.server = server
 
 
 class Config:
 
     def __init__(self, name):
-        logging.debug("Создание экземпляра класса - конфиг.")
+        logging.debug("Создание экземпляра класса - конфиг, имя: {}.".format(name))
         self.name = name
         if not (os.path.exists(name)):
             to_yaml = {"server": '', "token": '', "delay_notification": "45"}
@@ -303,7 +303,7 @@ class Config:
                 yaml.dump(to_yaml, f_obj)
 
     def save_settings(self, dict_setting):
-        logging.debug("Перезапись  настроек в конфигурационном файле.")
+        logging.debug("Перезапись  настроек в конфигурационном файле, настройки: {}.".format(str(dict_setting)))
         with open(self.name) as f_obj:
             to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         for key, value in dict_setting.items():
@@ -448,14 +448,14 @@ class TrayIcon:
             self.tray.show()
 
     def set_icon(self, icon):
-        logging.debug("Установление изображение для TrayIcon.")
+        logging.debug("Установление изображение для TrayIcon, путь до картинки: {}.".format(icon))
         self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
         self.tray.authorization = True
-        logging.debug("TrayIcon: Токен доступа действителен.")
+        logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}.".format(response))
         user = json.loads(response.text)
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
