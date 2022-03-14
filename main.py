@@ -17,15 +17,18 @@ import threading
 import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
 
+# Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
+indent_format = " " * 24
+
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
-    indent_format = 24
+
     for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(" " * indent_format, frame_summary.filename,
+        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(indent_format, frame_summary.filename,
                                                                            frame_summary.lineno,
-                                                                           frame_summary.name, " " * indent_format,
+                                                                           frame_summary.name, indent_format,
                                                                            frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
@@ -228,8 +231,14 @@ class Api:
         self.access_token = access_token
 
     def get_notifications(self):
-        logging.debug("Получение всех новых оповещений для пользователя.")
-        return requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        request = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        request_text = json.loads(request.text)
+        debug_string = "Получение новых сообщений для пользователя: "
+        for i in range(len(request_text)):
+            debug_string += str(request_text[i]) + ",\n" + indent_format
+        debug_string += debug_string[0:len(debug_string) - 1] + "."
+        logging.debug(debug_string)
+        return request
 
     def get_issues(self):
         logging.debug("Получение задач.")
