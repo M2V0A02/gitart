@@ -233,8 +233,11 @@ class Api:
     @staticmethod
     def debug_date(response, debug_string):
         response_text = json.loads(response.text)
-        for i in range(len(response_text)):
-            debug_string += str(response_text[i]) + ",\n" + indent_format
+        if isinstance(response_text, dict):
+            debug_string += str(response_text)
+        else:
+            for i in range(len(response_text)):
+                debug_string += str(response_text[i]) + ",\n" + indent_format
         debug_string += debug_string[0:len(debug_string) - 1] + "."
         logging.debug(debug_string)
 
