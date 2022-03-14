@@ -47,7 +47,6 @@ class Notification:
         self.main_window.setFixedSize(830, 830)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
-        self.timer_change_button_text = QtCore.QTimer()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
@@ -75,19 +74,18 @@ class Notification:
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
+        # убираю из списка задач мои, чтобы остались только назначенные.
+
+        def filter_issues(issue):
+            if not (issue['assignees'] is None):
+                for j in range(len(issue['assignees'])):
+                    if issue['assignees'][j]['login'] == user['login']:
+                        return True
+            return False
         issues = json.loads(self.api.get_issues().text)
         user = json.loads(self.api.get_user().text)
-        i = 0
-        while i < len(issues):
-            is_delete = True
-            if not (issues[i]['assignees'] is None):
-                for j in range(len(issues[i]['assignees'])):
-                    if issues[i]['assignees'][j]['login'] == user['login']:
-                        is_delete = False
-            if is_delete:
-                issues.pop(i)
-                i = i - 1
-            i += 1
+        issues = filter(filter_issues, issues)
+        issues = list(issues)
         label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
@@ -191,14 +189,16 @@ class Notification:
         notifications = json.loads(self.api.get_notifications().text)
         widget = QWidget()
         main_layout = QVBoxLayout()
-        layout = QHBoxLayout()
         label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
         label.setStyleSheet("font-size:24px;")
-        layout.addWidget(label)
+        main_layout.addWidget(label)
+        layout = QHBoxLayout()
         self.update_button = QPushButton("Обновить")
         self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
+        label = QLabel("Последние обновление - {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
+        layout.addWidget(label)
         main_layout.addLayout(layout)
         self.ui.append(label)
         self.show_notifications(notifications, main_layout)
@@ -213,10 +213,7 @@ class Notification:
             self.main_window.showNormal()
 
     def update_notifications(self):
-        self.timer_change_button_text.timeout.connect(lambda: self.update_button.setText('Обновить'))
         self.create_window_notification()
-        self.update_button.setText("Обновление")
-        self.timer_change_button_text.start(500)
 
     def open_url(self, url):
         logging.debug("Переход по ссылке - {}".format(url))
