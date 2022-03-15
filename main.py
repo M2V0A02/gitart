@@ -225,15 +225,39 @@ class Notification:
 
 class Api:
 
-    def __init__(self, server, access_token):
+    def __init__(self, server, access_token, tray_icon):
         logging.debug("Создание экземляра класса - Api.")
         self.server = server
+        self.tray_icon = tray_icon
         self.access_token = access_token
 
     def check_connection_server(self):
         i = 0
+
+        def window_change_server():
+            dlg = QDialog()
+            dlg.setWindowTitle("Изменение сервера")
+            dlg.resize(250, 25)
+            layout = QVBoxLayout(dlg)
+            label = QLabel("Адрес сервера:")
+            layout.addWidget(label)
+            edit_server = QtWidgets.QTextEdit()
+            layout.addWidget(edit_server)
+            button = QPushButton("Изменить сервер")
+            layout.addWidget(button)
+
+            def change_server(dialog_window):
+
+                def func():
+                    dialog_window.close()
+                    self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                    self.server = edit_server.toPlainText()
+                return func
+            button.clicked.connect(change_server(dlg))
+            dlg.exec()
         while True:
             try:
+                print(1)
                 requests.get("{}".format(self.server))
                 if i > 0:
                     msg = QMessageBox()
@@ -241,11 +265,29 @@ class Api:
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
-                    requests.exceptions.InvalidSchema):
+                    requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
                     msg = QMessageBox()
+                    msg.setWindowTitle('Сервер не отвечает')
                     msg.setText('Соединение с сервером, не установлено.')
                     msg.exec()
+                    dlg = QDialog()
+                    dlg.setStyleSheet('width:150px; height:15px;')
+                    dlg.setWindowTitle("Нужно, поменять сервер?")
+                    button_accept = QPushButton("Да")
+
+                    def func():
+                        dlg.close()
+                        window_change_server()
+                    button_accept.clicked.connect(func)
+                    button_reject = QPushButton("Нет")
+                    button_reject.clicked.connect(lambda: dlg.close())
+                    layout = QVBoxLayout(dlg)
+                    content = QHBoxLayout()
+                    content.addWidget(button_accept)
+                    content.addWidget(button_reject)
+                    layout.addLayout(content)
+                    dlg.exec()
                 i += 1
 
     @staticmethod
@@ -374,13 +416,6 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         if float(self.edit_delay_notification.toPlainText()) > 0:
             to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
-        if self.tray_icon.api.get_user() is None:
-            logging.debug("response - пустой в save_settings")
-        else:
-            if not(self.tray_icon.api.get_user().status_code == 200):
-                msg = QMessageBox()
-                msg.setText('Авторизация не удалась')
-                msg.exec()
         self.tray_icon.config.save_settings(to_yaml)
         self.tray_icon.constructor_menu()
         self.hide()
@@ -407,7 +442,7 @@ class TrayIcon:
         self.timer_constructor_menu = threading.Timer(3, self.constructor_menu)
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
-        self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
+        self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
