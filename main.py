@@ -286,22 +286,10 @@ class Api:
         return response
 
     def get_user(self):
-        try:
             self.check_connection_server()
             response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
-        except requests.exceptions.ConnectionError:
-            logging.error('Соединение не установленно имя сервера - {}.'.format(self.server))
-            msg = QMessageBox()
-            msg.setText('Соединение с сервером, не установлено.')
-            msg.exec()
-        except requests.exceptions.InvalidURL:
-            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}"
-                                                             .format(self.server, self.access_token)))
-            msg = QMessageBox()
-            msg.setText('Server - пустой')
-            msg.exec()
 
     def set_access_token(self, access_token):
         logging.debug("Перезапись токена доступа: {}.".format(access_token))
