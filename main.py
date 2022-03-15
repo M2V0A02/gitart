@@ -257,7 +257,6 @@ class Api:
             dlg.exec()
         while True:
             try:
-                print(1)
                 requests.get("{}".format(self.server))
                 if i > 0:
                     msg = QMessageBox()
