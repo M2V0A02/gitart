@@ -240,7 +240,8 @@ class Api:
                     msg.setText('Соединение с сервером, востановленно.')
                     msg.exec()
                 break
-            except requests.exceptions.ConnectionError and requests.exceptions.InvalidURL and requests.exceptions.InvalidSchema:
+            except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
+                    requests.exceptions.InvalidSchema):
                 if i == 0:
                     msg = QMessageBox()
                     msg.setText('Соединение с сервером, не установлено.')
@@ -259,22 +260,26 @@ class Api:
         logging.debug(debug_string)
 
     def get_notifications(self):
+        self.check_connection_server()
         response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
         self.debug_date(response, "Получение новых сообщений для пользователя: ")
         return response
 
     def get_issues(self):
+        self.check_connection_server()
         response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
         self.debug_date(response, "Получение задач для пользователя: ")
         return response
 
     def get_repos_issues(self, repo, issues):
+        self.check_connection_server()
         response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
         self.debug_date(response, "Получение информации о задачи в репозитории: ")
         return response
 
     def get_comment(self, comment):
+        self.check_connection_server()
         response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
                                                                                                             comment))
         self.debug_date(response, "Получение комментария: ")
@@ -282,6 +287,7 @@ class Api:
 
     def get_user(self):
         try:
+            self.check_connection_server()
             response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
