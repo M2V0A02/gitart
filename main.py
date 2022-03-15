@@ -402,7 +402,6 @@ class TrayIcon:
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
-        self.constructor_menu()
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
@@ -541,6 +540,7 @@ def main():
     app.setWindowIcon(QIcon('./img/logo.svg'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
+    tray_icon.constructor_menu()
     app.exec_()
 
 
