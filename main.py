@@ -230,6 +230,23 @@ class Api:
         self.server = server
         self.access_token = access_token
 
+    def check_connection_server(self):
+        i = 0
+        while True:
+            try:
+                requests.get("{}".format(self.server))
+                if i > 0:
+                    msg = QMessageBox()
+                    msg.setText('Соединение с сервером, востановленно.')
+                    msg.exec()
+                break
+            except requests.exceptions.ConnectionError and requests.exceptions.InvalidURL and requests.exceptions.InvalidSchema:
+                if i == 0:
+                    msg = QMessageBox()
+                    msg.setText('Соединение с сервером, не установлено.')
+                    msg.exec()
+                i += 1
+
     @staticmethod
     def debug_date(response, debug_string):
         response_text = json.loads(response.text)
@@ -242,30 +259,30 @@ class Api:
         logging.debug(debug_string)
 
     def get_notifications(self):
-        response = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
         self.debug_date(response, "Получение новых сообщений для пользователя: ")
         return response
 
     def get_issues(self):
-        response = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
         self.debug_date(response, "Получение задач для пользователя: ")
         return response
 
     def get_repos_issues(self, repo, issues):
-        response = requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
         self.debug_date(response, "Получение информации о задачи в репозитории: ")
         return response
 
     def get_comment(self, comment):
-        response = requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
                                                                                                             comment))
         self.debug_date(response, "Получение комментария: ")
         return response
 
     def get_user(self):
         try:
-            response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
         except requests.exceptions.ConnectionError:
