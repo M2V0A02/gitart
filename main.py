@@ -225,10 +225,70 @@ class Notification:
 
 class Api:
 
-    def __init__(self, server, access_token):
+    def __init__(self, server, access_token, tray_icon):
         logging.debug("Создание экземляра класса - Api.")
         self.server = server
+        self.tray_icon = tray_icon
         self.access_token = access_token
+
+    def check_connection_server(self):
+        i = 0
+
+        def window_change_server():
+            dlg = QDialog()
+            dlg.setWindowTitle("Изменение сервера")
+            dlg.resize(250, 25)
+            layout = QVBoxLayout(dlg)
+            label = QLabel("Адрес сервера:")
+            layout.addWidget(label)
+            edit_server = QtWidgets.QTextEdit()
+            layout.addWidget(edit_server)
+            button = QPushButton("Изменить сервер")
+            layout.addWidget(button)
+
+            def change_server(dialog_window):
+
+                def func():
+                    dialog_window.close()
+                    self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                    self.server = edit_server.toPlainText()
+                return func
+            button.clicked.connect(change_server(dlg))
+            dlg.exec()
+        while True:
+            try:
+                print(1)
+                requests.get("{}".format(self.server))
+                if i > 0:
+                    msg = QMessageBox()
+                    msg.setText('Соединение с сервером, востановленно.')
+                    msg.exec()
+                break
+            except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
+                    requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
+                if i == 0:
+                    msg = QMessageBox()
+                    msg.setWindowTitle('Сервер не отвечает')
+                    msg.setText('Соединение с сервером, не установлено.')
+                    msg.exec()
+                    dlg = QDialog()
+                    dlg.setStyleSheet('width:150px; height:15px;')
+                    dlg.setWindowTitle("Нужно, поменять сервер?")
+                    button_accept = QPushButton("Да")
+
+                    def func():
+                        dlg.close()
+                        window_change_server()
+                    button_accept.clicked.connect(func)
+                    button_reject = QPushButton("Нет")
+                    button_reject.clicked.connect(lambda: dlg.close())
+                    layout = QVBoxLayout(dlg)
+                    content = QHBoxLayout()
+                    content.addWidget(button_accept)
+                    content.addWidget(button_reject)
+                    layout.addLayout(content)
+                    dlg.exec()
+                i += 1
 
     @staticmethod
     def debug_date(response, debug_string):
@@ -242,43 +302,36 @@ class Api:
         logging.debug(debug_string)
 
     def get_notifications(self):
-        response = requests.get("http://{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        self.check_connection_server()
+        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
         self.debug_date(response, "Получение новых сообщений для пользователя: ")
         return response
 
     def get_issues(self):
-        response = requests.get('http://{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
+        self.check_connection_server()
+        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
         self.debug_date(response, "Получение задач для пользователя: ")
         return response
 
     def get_repos_issues(self, repo, issues):
-        response = requests.get("http://{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        self.check_connection_server()
+        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
         self.debug_date(response, "Получение информации о задачи в репозитории: ")
         return response
 
     def get_comment(self, comment):
-        response = requests.get("http://{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+        self.check_connection_server()
+        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
                                                                                                             comment))
         self.debug_date(response, "Получение комментария: ")
         return response
 
     def get_user(self):
-        try:
-            response = requests.get("http://{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            self.check_connection_server()
+            response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
             self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
             return response
-        except requests.exceptions.ConnectionError:
-            logging.error('Соединение не установленно имя сервера - {}.'.format(self.server))
-            msg = QMessageBox()
-            msg.setText('Соединение с сервером, не установлено.')
-            msg.exec()
-        except requests.exceptions.InvalidURL:
-            logging.error('Server - пустой, url - {}'.format("http://{}/api/v1/user?access_token={}"
-                                                             .format(self.server, self.access_token)))
-            msg = QMessageBox()
-            msg.setText('Server - пустой')
-            msg.exec()
 
     def set_access_token(self, access_token):
         logging.debug("Перезапись токена доступа: {}.".format(access_token))
@@ -363,13 +416,6 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         if float(self.edit_delay_notification.toPlainText()) > 0:
             to_yaml['delay_notification'] = self.edit_delay_notification.toPlainText()
         self.tray_icon.api.set_server(to_yaml['server'])
-        if self.tray_icon.api.get_user() is None:
-            logging.debug("response - пустой в save_settings")
-        else:
-            if not(self.tray_icon.api.get_user().status_code == 200):
-                msg = QMessageBox()
-                msg.setText('Авторизация не удалась')
-                msg.exec()
         self.tray_icon.config.save_settings(to_yaml)
         self.tray_icon.constructor_menu()
         self.hide()
@@ -396,13 +442,12 @@ class TrayIcon:
         self.timer_constructor_menu = threading.Timer(3, self.constructor_menu)
         self.config = Config('conf.yaml')
         read_data = self.config.get_settings()
-        self.api = Api(read_data.get('server', ''), read_data.get('token', ''))
+        self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
-        self.constructor_menu()
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
@@ -541,6 +586,7 @@ def main():
     app.setWindowIcon(QIcon('./img/logo.svg'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/icon.png', app)
+    tray_icon.constructor_menu()
     app.exec_()
 
 
