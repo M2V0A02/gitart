@@ -298,27 +298,27 @@ class Api:
     def get_notifications(self):
         self.check_connection_server()
         response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
-        logging.debug("Получение новых сообщений для пользователя: ")
+        logging.debug("Получение новых сообщений для пользователя.")
         return response
 
     def get_issues(self):
         self.check_connection_server()
         response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
-        logging.debug("Получение задач для пользователя: ")
+        logging.debug("Получение задач для пользователя.")
         return response
 
     def get_repos_issues(self, repo, issues):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
-        logging.debug( "Получение информации о задачи в репозитории: ")
+        logging.debug("Получение информации о задачи в репозитории.")
         return response
 
     def get_comment(self, comment):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
                                                                                                             comment))
-        logging.debug("Получение комментария: ")
+        logging.debug("Получение комментария.")
         return response
 
     def get_user(self):
@@ -566,6 +566,7 @@ class TrayIcon:
 
 
 def main():
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
