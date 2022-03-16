@@ -140,15 +140,21 @@ class Notification:
     def get_additional_information(self, notifications):
         addititonal_information = dict()
         if not (notifications['subject']['latest_comment_url'] == ''):
-            id_comments = re.search(r'comments/\d+', format(notifications['subject']
-                                                            ['latest_comment_url']))[0].replace('comments/', '')
-            addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
+            try:
+                id_comments = re.search(r'comments/\d+', format(notifications['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
+            except json.decoder.JSONDecodeError:
+                logging.debug("Не получилось получить комментарий - {}".format(notifications['subject']['latest_comment_url']))
         if not(notifications['subject']['url'] == ''):
-            repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
-                '/issues', '')
-            issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
-            notification = json.loads(self.api.get_repos_issues(repo, issues).text)
-            addititonal_information['user_login'] = (notification['user']['login'])
+            try:
+                repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
+                    '/issues', '')
+                issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
+                notification = json.loads(self.api.get_repos_issues(repo, issues).text)
+                addititonal_information['user_login'] = (notification['user']['login'])
+            except json.decoder.JSONDecodeError:
+                logging.debug("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
         return addititonal_information
 
     def formatting_the_date(self, date):
