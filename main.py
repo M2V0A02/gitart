@@ -140,15 +140,21 @@ class Notification:
     def get_additional_information(self, notifications):
         addititonal_information = dict()
         if not (notifications['subject']['latest_comment_url'] == ''):
-            id_comments = re.search(r'comments/\d+', format(notifications['subject']
-                                                            ['latest_comment_url']))[0].replace('comments/', '')
-            addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
+            try:
+                id_comments = re.search(r'comments/\d+', format(notifications['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
+            except json.decoder.JSONDecodeError:
+                logging.debug("Не получилось получить комментарий - {}".format(notifications['subject']['latest_comment_url']))
         if not(notifications['subject']['url'] == ''):
-            repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
-                '/issues', '')
-            issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
-            notification = json.loads(self.api.get_repos_issues(repo, issues).text)
-            addititonal_information['user_login'] = (notification['user']['login'])
+            try:
+                repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
+                    '/issues', '')
+                issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
+                notification = json.loads(self.api.get_repos_issues(repo, issues).text)
+                addititonal_information['user_login'] = (notification['user']['login'])
+            except json.decoder.JSONDecodeError:
+                logging.debug("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
         return addititonal_information
 
     def formatting_the_date(self, date):
@@ -289,47 +295,36 @@ class Api:
                     dlg.exec()
                 i += 1
 
-    @staticmethod
-    def debug_date(response, debug_string):
-        response_text = json.loads(response.text)
-        if isinstance(response_text, dict):
-            debug_string += str(response_text)
-        else:
-            for i in range(len(response_text)):
-                debug_string += str(response_text[i]) + ",\n" + indent_format
-        debug_string += debug_string[0:len(debug_string) - 1] + "."
-        logging.debug(debug_string)
-
     def get_notifications(self):
         self.check_connection_server()
         response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
-        self.debug_date(response, "Получение новых сообщений для пользователя: ")
+        logging.debug("Получение новых сообщений для пользователя.")
         return response
 
     def get_issues(self):
         self.check_connection_server()
         response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
                                                                                                     self.access_token))
-        self.debug_date(response, "Получение задач для пользователя: ")
+        logging.debug("Получение задач для пользователя.")
         return response
 
     def get_repos_issues(self, repo, issues):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
-        self.debug_date(response, "Получение информации о задачи в репозитории: ")
+        logging.debug("Получение информации о задачи в репозитории.")
         return response
 
     def get_comment(self, comment):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
                                                                                                             comment))
-        self.debug_date(response, "Получение комментария: ")
+        logging.debug("Получение комментария.")
         return response
 
     def get_user(self):
             self.check_connection_server()
             response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
-            self.debug_date(response, "Обращение к Api для получение информацию о своей учетной записи: ")
+            logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
             return response
 
     def set_access_token(self, access_token):
@@ -571,6 +566,7 @@ class TrayIcon:
 
 
 def main():
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
