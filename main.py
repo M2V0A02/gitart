@@ -76,6 +76,8 @@ class Notification:
 
     def get_assigned_to_you(self):
         user = json.loads(self.api.get_user().text)
+        # убираю из списка задач мои, чтобы остались только назначенные.
+
         def filter_tasks(assigned_to_you):
             if not (assigned_to_you['assignees'] is None):
                 for j in range(len(assigned_to_you['assignees'])):
@@ -85,19 +87,7 @@ class Notification:
         assigned_to_you = json.loads(self.api.get_issues().text)
         return list(filter(filter_tasks, assigned_to_you))
 
-    def create_window_tasks(self):
-        widget = QWidget()
-        main_layout = QVBoxLayout()
-        layout = QHBoxLayout()
-        # убираю из списка задач мои, чтобы остались только назначенные.
-        assigned_to_you = self.get_assigned_to_you()
-        label = QLabel('Вам назначено - {} задач.'.format(len(assigned_to_you)))
-        label.setStyleSheet("font-size:24px;")
-        button = QPushButton("Обновить")
-        button.clicked.connect(self.create_window_tasks)
-        layout.addWidget(label)
-        layout.addWidget(button)
-        main_layout.addLayout(layout)
+    def show_assigned_to_you(self, assigned_to_you, main_layout):
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
@@ -111,12 +101,13 @@ class Notification:
             self.ui.append(label)
             task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
             body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
-                                                                task_id, self.formatting_the_date(assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                task_id, self.formatting_the_date(
+                    assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
                                                                 assigned_to_you[i]['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not(assigned_to_you[i]['milestone'] is None):
+            if not (assigned_to_you[i]['milestone'] is None):
                 label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you[i]['milestone']['title']), 50))
                 layout.addWidget(label)
             button = QPushButton("Перейти в {}".format(assigned_to_you[i]['html_url'].replace("http://", '')))
@@ -132,9 +123,23 @@ class Notification:
             if (i + 1) % number_of_messages_per_line == 0:
                 main_layout.addLayout(layout_message)
                 layout_message = QHBoxLayout()
-        if not(y + 1 % number_of_messages_per_line == 0):
+        if not (y + 1 % number_of_messages_per_line == 0):
             main_layout.addLayout(layout_message)
         main_layout.addStretch()
+
+    def create_window_tasks(self):
+        widget = QWidget()
+        main_layout = QVBoxLayout()
+        layout = QHBoxLayout()
+        assigned_to_you = self.get_assigned_to_you()
+        label = QLabel('Вам назначено - {} задач.'.format(len(assigned_to_you)))
+        label.setStyleSheet("font-size:24px;")
+        button = QPushButton("Обновить")
+        button.clicked.connect(self.create_window_tasks)
+        layout.addWidget(label)
+        layout.addWidget(button)
+        main_layout.addLayout(layout)
+        self.show_assigned_to_you(assigned_to_you, main_layout)
         widget.setLayout(main_layout)
         self.tasks_scroll_area.setWidget(widget)
         self.tab_widget.update()
