@@ -21,6 +21,14 @@ from PyQt5.QtWinExtras import QtWin
 indent_format = " " * 24
 
 
+def show_message(message, title, style=''):
+    msg = QMessageBox()
+    msg.setWindowTitle(title)
+    msg.setText(message)
+    msg.setStyleSheet(style)
+    msg.exec()
+
+
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
@@ -280,10 +288,7 @@ class Api:
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
-                    msg = QMessageBox()
-                    msg.setWindowTitle('Сервер не отвечает')
-                    msg.setText('Соединение с сервером, не установлено.')
-                    msg.exec()
+                    show_message('Соединение с сервером, не установлено.', 'Сервер не отвечает')
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
                     dlg.setWindowTitle("Нужно, поменять сервер?")
