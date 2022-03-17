@@ -43,6 +43,7 @@ def cut_the_string(string, length):
 
 
 class Notification:
+
     def __init__(self, api, tray):
         self.tray = tray
         self.main_window = QMainWindow()
@@ -73,23 +74,25 @@ class Notification:
         if number_tab == 1:
             self.create_window_tasks()
 
+
+
     def create_window_tasks(self):
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         # убираю из списка задач мои, чтобы остались только назначенные.
 
-        def filter_issues(issue):
-            if not (issue['assignees'] is None):
-                for j in range(len(issue['assignees'])):
-                    if issue['assignees'][j]['login'] == user['login']:
+        def filter_tasks(tasks):
+            if not (tasks['assignees'] is None):
+                for j in range(len(tasks['assignees'])):
+                    if tasks['assignees'][j]['login'] == user['login']:
                         return True
             return False
-        issues = json.loads(self.api.get_issues().text)
+        tasks = json.loads(self.api.get_issues().text)
         user = json.loads(self.api.get_user().text)
-        issues = filter(filter_issues, issues)
-        issues = list(issues)
-        label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
+        tasks = filter(filter_tasks, tasks)
+        tasks = list(tasks)
+        label = QLabel('Вам назначено - {} задач.'.format(len(tasks)))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
@@ -99,26 +102,26 @@ class Notification:
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
-        for i in range(len(issues)):
-            label = QLabel(cut_the_string(issues[i]['title'], 50))
+        for i in range(len(tasks)):
+            label = QLabel(cut_the_string(tasks[i]['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             self.ui.append(label)
-            task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'],
-                                                                task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'),
-                                                                issues[i]['user']['login']), 60)
+            task_id = re.search(r'/issues/.+', tasks[i]['url'])[0].replace('/issues/', '')
+            body = cut_the_string("{}#{} открыта {} {}.".format(tasks[i]['repository']['full_name'],
+                                                                task_id, self.formatting_the_date(tasks[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                tasks[i]['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not(issues[i]['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(issues[i]['milestone']['title']), 50))
+            if not(tasks[i]['milestone'] is None):
+                label = QLabel(cut_the_string("Этап: {}".format(tasks[i]['milestone']['title']), 50))
                 layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(issues[i]['html_url'].replace("http://", '')))
-            open_tasks = self.open_url(issues[i]['html_url'])
+            button = QPushButton("Перейти в {}".format(tasks[i]['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(tasks[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
