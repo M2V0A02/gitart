@@ -244,30 +244,31 @@ class Api:
         self.tray_icon = tray_icon
         self.access_token = access_token
 
+    def window_change_server(self):
+        dlg = QDialog()
+        dlg.setWindowTitle("Изменение сервера")
+        dlg.resize(250, 25)
+        layout = QVBoxLayout(dlg)
+        label = QLabel("Адрес сервера:")
+        layout.addWidget(label)
+        edit_server = QtWidgets.QTextEdit()
+        layout.addWidget(edit_server)
+        button = QPushButton("Изменить сервер")
+        layout.addWidget(button)
+
+        def change_server(dialog_window):
+            def func():
+                dialog_window.close()
+                self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                self.server = edit_server.toPlainText()
+
+            return func
+
+        button.clicked.connect(change_server(dlg))
+        dlg.exec()
+
     def check_connection_server(self):
         i = 0
-
-        def window_change_server():
-            dlg = QDialog()
-            dlg.setWindowTitle("Изменение сервера")
-            dlg.resize(250, 25)
-            layout = QVBoxLayout(dlg)
-            label = QLabel("Адрес сервера:")
-            layout.addWidget(label)
-            edit_server = QtWidgets.QTextEdit()
-            layout.addWidget(edit_server)
-            button = QPushButton("Изменить сервер")
-            layout.addWidget(button)
-
-            def change_server(dialog_window):
-
-                def func():
-                    dialog_window.close()
-                    self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
-                    self.server = edit_server.toPlainText()
-                return func
-            button.clicked.connect(change_server(dlg))
-            dlg.exec()
         while True:
             try:
                 requests.get("{}".format(self.server))
@@ -290,7 +291,7 @@ class Api:
 
                     def func():
                         dlg.close()
-                        window_change_server()
+                        self.window_change_server()
                     button_accept.clicked.connect(func)
                     button_reject = QPushButton("Нет")
                     button_reject.clicked.connect(lambda: dlg.close())
