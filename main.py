@@ -62,7 +62,6 @@ class Notification:
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.ui = []
         self.api = api
         self.notifications_scroll_area = QScrollArea()
         self.tasks_scroll_area = QScrollArea()
@@ -81,6 +80,14 @@ class Notification:
             self.create_window_notification()
         if number_tab == 1:
             self.create_window_tasks()
+
+    @staticmethod
+    def formatting_the_date(string_date):
+        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+        string_date = string_date + datetime.timedelta(hours=timezone)
+        return string_date
 
     def get_assigned_to_you(self):
         user = json.loads(self.api.get_user().text)
@@ -106,7 +113,6 @@ class Notification:
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
-            self.ui.append(label)
             task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
             body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
                                                                 task_id, self.formatting_the_date(
@@ -124,7 +130,6 @@ class Notification:
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
-            self.ui.append(button)
             layout.addWidget(button)
             layout_message.addWidget(div)
             y = i
@@ -172,13 +177,6 @@ class Notification:
                 logging.debug("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
         return addititonal_information
 
-    def formatting_the_date(self, date):
-        date = datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
-        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
-        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        date = date + datetime.timedelta(hours=timezone)
-        return date
-
     def show_notifications(self, notifications, main_layout):
         for i in range(len(notifications)):
             additional_information = self.get_additional_information(notifications[i])
@@ -191,13 +189,11 @@ class Notification:
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             main_layout.addWidget(label)
-            self.ui.append(label)
             if 'body' in additional_information:
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(additional_information['body']))
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
-                self.ui.append(plain_text)
             open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
             number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
             button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
@@ -207,7 +203,6 @@ class Notification:
                 " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             main_layout.addWidget(button)
-            self.ui.append(button)
 
     def create_window_notification(self):
         notifications = json.loads(self.api.get_notifications().text)
@@ -224,7 +219,6 @@ class Notification:
         label = QLabel("Последние обновление - {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         layout.addWidget(label)
         main_layout.addLayout(layout)
-        self.ui.append(label)
         self.show_notifications(notifications, main_layout)
         main_layout.addStretch()
         widget.setLayout(main_layout)
@@ -239,7 +233,8 @@ class Notification:
     def update_notifications(self):
         self.create_window_notification()
 
-    def open_url(self, url):
+    @staticmethod
+    def open_url(url):
         logging.debug("Переход по ссылке - {}".format(url))
         return lambda: webbrowser.open_new(url)
 
@@ -248,9 +243,9 @@ class Api:
 
     def __init__(self, server, access_token, tray_icon):
         logging.debug("Создание экземляра класса - Api.")
-        self.server = server
+        self.__server = server
         self.tray_icon = tray_icon
-        self.access_token = access_token
+        self.__access_token = access_token
 
     def window_change_server(self):
         dlg = QDialog()
@@ -268,7 +263,7 @@ class Api:
             def func():
                 dialog_window.close()
                 self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
-                self.server = edit_server.toPlainText()
+                self.__server = edit_server.toPlainText()
 
             return func
 
@@ -279,7 +274,7 @@ class Api:
         i = 0
         while True:
             try:
-                requests.get("{}".format(self.server))
+                requests.get("{}".format(self.__server))
                 if i > 0:
                     msg = QMessageBox()
                     msg.setText('Соединение с сервером, востановленно.')
@@ -310,49 +305,51 @@ class Api:
 
     def get_notifications(self):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.__server, self.__access_token))
         logging.debug("Получение новых сообщений для пользователя.")
         return response
 
     def get_issues(self):
         self.check_connection_server()
-        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
-                                                                                                    self.access_token))
+        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
+                                                                                                    self.__access_token))
         logging.debug("Получение задач для пользователя.")
         return response
 
     def get_repos_issues(self, repo, issues):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.__server, repo, issues))
         logging.debug("Получение информации о задачи в репозитории.")
         return response
 
     def get_comment(self, comment):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
                                                                                                             comment))
         logging.debug("Получение комментария.")
         return response
 
     def get_user(self):
             self.check_connection_server()
-            response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
             logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
             return response
 
     def set_access_token(self, access_token):
         logging.debug("Перезапись токена доступа: {}.".format(access_token))
-        self.access_token = access_token
+        self.__access_token = access_token
 
+    @property
     def get_access_token(self):
-        return self.access_token
+        return self.__access_token
 
+    @property
     def get_server(self):
-        return self.server
+        return self.__server
 
     def set_server(self, server):
         logging.debug("Перезапись адреса сервера: {}.".format(server))
-        self.server = server
+        self.__server = server
 
 
 class Config:
