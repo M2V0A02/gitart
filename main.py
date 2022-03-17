@@ -21,6 +21,14 @@ from PyQt5.QtWinExtras import QtWin
 indent_format = " " * 24
 
 
+def show_message(message, title, style=''):
+    msg = QMessageBox()
+    msg.setWindowTitle(title)
+    msg.setText(message)
+    msg.setStyleSheet(style)
+    msg.exec()
+
+
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
@@ -43,6 +51,7 @@ def cut_the_string(string, length):
 
 
 class Notification:
+
     def __init__(self, api, tray):
         self.tray = tray
         self.main_window = QMainWindow()
@@ -53,7 +62,6 @@ class Notification:
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.ui = []
         self.api = api
         self.notifications_scroll_area = QScrollArea()
         self.tasks_scroll_area = QScrollArea()
@@ -73,66 +81,78 @@ class Notification:
         if number_tab == 1:
             self.create_window_tasks()
 
-    def create_window_tasks(self):
-        widget = QWidget()
-        main_layout = QVBoxLayout()
-        layout = QHBoxLayout()
+    @staticmethod
+    def formatting_the_date(string_date):
+        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+        string_date = string_date + datetime.timedelta(hours=timezone)
+        return string_date
+
+    def get_assigned_to_you(self):
+        user = json.loads(self.api.get_user().text)
         # убираю из списка задач мои, чтобы остались только назначенные.
 
-        def filter_issues(issue):
-            if not (issue['assignees'] is None):
-                for j in range(len(issue['assignees'])):
-                    if issue['assignees'][j]['login'] == user['login']:
+        def filter_tasks(assigned_to_you):
+            if not (assigned_to_you['assignees'] is None):
+                for j in range(len(assigned_to_you['assignees'])):
+                    if assigned_to_you['assignees'][j]['login'] == user['login']:
                         return True
             return False
-        issues = json.loads(self.api.get_issues().text)
-        user = json.loads(self.api.get_user().text)
-        issues = filter(filter_issues, issues)
-        issues = list(issues)
-        label = QLabel('Вам назначено - {} задач.'.format(len(issues)))
-        label.setStyleSheet("font-size:24px;")
-        button = QPushButton("Обновить")
-        button.clicked.connect(self.create_window_tasks)
-        layout.addWidget(label)
-        layout.addWidget(button)
-        main_layout.addLayout(layout)
+        assigned_to_you = json.loads(self.api.get_issues().text)
+        return list(filter(filter_tasks, assigned_to_you))
+
+    def show_assigned_to_you(self, assigned_to_you, main_layout):
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
-        for i in range(len(issues)):
-            label = QLabel(cut_the_string(issues[i]['title'], 50))
+        for i in range(len(assigned_to_you)):
+            label = QLabel(cut_the_string(assigned_to_you[i]['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
-            self.ui.append(label)
-            task_id = re.search(r'/issues/.+', issues[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(issues[i]['repository']['full_name'],
-                                                                task_id, self.formatting_the_date(issues[i]['created_at']).strftime('%d-%m-%Y'),
-                                                                issues[i]['user']['login']), 60)
+            task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
+            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
+                                                                task_id, self.formatting_the_date(
+                    assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                assigned_to_you[i]['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not(issues[i]['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(issues[i]['milestone']['title']), 50))
+            if not (assigned_to_you[i]['milestone'] is None):
+                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you[i]['milestone']['title']), 50))
                 layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(issues[i]['html_url'].replace("http://", '')))
-            open_tasks = self.open_url(issues[i]['html_url'])
+            button = QPushButton("Перейти в {}".format(assigned_to_you[i]['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(assigned_to_you[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
-            self.ui.append(button)
             layout.addWidget(button)
             layout_message.addWidget(div)
             y = i
             if (i + 1) % number_of_messages_per_line == 0:
                 main_layout.addLayout(layout_message)
                 layout_message = QHBoxLayout()
-        if not(y + 1 % number_of_messages_per_line == 0):
+        if not (y + 1 % number_of_messages_per_line == 0):
             main_layout.addLayout(layout_message)
         main_layout.addStretch()
+
+    def create_window_tasks(self):
+        widget = QWidget()
+        main_layout = QVBoxLayout()
+        layout = QHBoxLayout()
+        assigned_to_you = self.get_assigned_to_you()
+        label = QLabel('Вам назначено - {} задач.'.format(len(assigned_to_you)))
+        label.setStyleSheet("font-size:24px;")
+        button = QPushButton("Обновить")
+        button.clicked.connect(self.create_window_tasks)
+        layout.addWidget(label)
+        layout.addWidget(button)
+        main_layout.addLayout(layout)
+        self.show_assigned_to_you(assigned_to_you, main_layout)
         widget.setLayout(main_layout)
         self.tasks_scroll_area.setWidget(widget)
         self.tab_widget.update()
@@ -157,13 +177,6 @@ class Notification:
                 logging.debug("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
         return addititonal_information
 
-    def formatting_the_date(self, date):
-        date = datetime.datetime.strptime(date, '%Y-%m-%dT%H:%M:%SZ')
-        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
-        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        date = date + datetime.timedelta(hours=timezone)
-        return date
-
     def show_notifications(self, notifications, main_layout):
         for i in range(len(notifications)):
             additional_information = self.get_additional_information(notifications[i])
@@ -176,13 +189,11 @@ class Notification:
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             main_layout.addWidget(label)
-            self.ui.append(label)
             if 'body' in additional_information:
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(additional_information['body']))
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
-                self.ui.append(plain_text)
             open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
             number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
             button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
@@ -192,7 +203,6 @@ class Notification:
                 " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
             button.clicked.connect(open_notification)
             main_layout.addWidget(button)
-            self.ui.append(button)
 
     def create_window_notification(self):
         notifications = json.loads(self.api.get_notifications().text)
@@ -209,7 +219,6 @@ class Notification:
         label = QLabel("Последние обновление - {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         layout.addWidget(label)
         main_layout.addLayout(layout)
-        self.ui.append(label)
         self.show_notifications(notifications, main_layout)
         main_layout.addStretch()
         widget.setLayout(main_layout)
@@ -224,7 +233,8 @@ class Notification:
     def update_notifications(self):
         self.create_window_notification()
 
-    def open_url(self, url):
+    @staticmethod
+    def open_url(url):
         logging.debug("Переход по ссылке - {}".format(url))
         return lambda: webbrowser.open_new(url)
 
@@ -233,37 +243,38 @@ class Api:
 
     def __init__(self, server, access_token, tray_icon):
         logging.debug("Создание экземляра класса - Api.")
-        self.server = server
+        self.__server = server
         self.tray_icon = tray_icon
-        self.access_token = access_token
+        self.__access_token = access_token
+
+    def window_change_server(self):
+        dlg = QDialog()
+        dlg.setWindowTitle("Изменение сервера")
+        dlg.resize(250, 25)
+        layout = QVBoxLayout(dlg)
+        label = QLabel("Адрес сервера:")
+        layout.addWidget(label)
+        edit_server = QtWidgets.QTextEdit()
+        layout.addWidget(edit_server)
+        button = QPushButton("Изменить сервер")
+        layout.addWidget(button)
+
+        def change_server(dialog_window):
+            def func():
+                dialog_window.close()
+                self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                self.__server = edit_server.toPlainText()
+
+            return func
+
+        button.clicked.connect(change_server(dlg))
+        dlg.exec()
 
     def check_connection_server(self):
         i = 0
-
-        def window_change_server():
-            dlg = QDialog()
-            dlg.setWindowTitle("Изменение сервера")
-            dlg.resize(250, 25)
-            layout = QVBoxLayout(dlg)
-            label = QLabel("Адрес сервера:")
-            layout.addWidget(label)
-            edit_server = QtWidgets.QTextEdit()
-            layout.addWidget(edit_server)
-            button = QPushButton("Изменить сервер")
-            layout.addWidget(button)
-
-            def change_server(dialog_window):
-
-                def func():
-                    dialog_window.close()
-                    self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
-                    self.server = edit_server.toPlainText()
-                return func
-            button.clicked.connect(change_server(dlg))
-            dlg.exec()
         while True:
             try:
-                requests.get("{}".format(self.server))
+                requests.get("{}".format(self.__server))
                 if i > 0:
                     msg = QMessageBox()
                     msg.setText('Соединение с сервером, востановленно.')
@@ -272,10 +283,7 @@ class Api:
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
-                    msg = QMessageBox()
-                    msg.setWindowTitle('Сервер не отвечает')
-                    msg.setText('Соединение с сервером, не установлено.')
-                    msg.exec()
+                    show_message('Соединение с сервером, не установлено.', 'Сервер не отвечает')
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
                     dlg.setWindowTitle("Нужно, поменять сервер?")
@@ -283,7 +291,7 @@ class Api:
 
                     def func():
                         dlg.close()
-                        window_change_server()
+                        self.window_change_server()
                     button_accept.clicked.connect(func)
                     button_reject = QPushButton("Нет")
                     button_reject.clicked.connect(lambda: dlg.close())
@@ -297,49 +305,51 @@ class Api:
 
     def get_notifications(self):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.server, self.access_token))
+        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.__server, self.__access_token))
         logging.debug("Получение новых сообщений для пользователя.")
         return response
 
     def get_issues(self):
         self.check_connection_server()
-        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.server,
-                                                                                                    self.access_token))
+        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
+                                                                                                    self.__access_token))
         logging.debug("Получение задач для пользователя.")
         return response
 
     def get_repos_issues(self, repo, issues):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.server, repo, issues))
+        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.__server, repo, issues))
         logging.debug("Получение информации о задачи в репозитории.")
         return response
 
     def get_comment(self, comment):
         self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.server,
+        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
                                                                                                             comment))
         logging.debug("Получение комментария.")
         return response
 
     def get_user(self):
             self.check_connection_server()
-            response = requests.get("{}/api/v1/user?access_token={}".format(self.server, self.access_token))
+            response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
             logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
             return response
 
     def set_access_token(self, access_token):
         logging.debug("Перезапись токена доступа: {}.".format(access_token))
-        self.access_token = access_token
+        self.__access_token = access_token
 
+    @property
     def get_access_token(self):
-        return self.access_token
+        return self.__access_token
 
+    @property
     def get_server(self):
-        return self.server
+        return self.__server
 
     def set_server(self, server):
         logging.debug("Перезапись адреса сервера: {}.".format(server))
-        self.server = server
+        self.__server = server
 
 
 class Config:
