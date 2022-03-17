@@ -74,25 +74,24 @@ class Notification:
         if number_tab == 1:
             self.create_window_tasks()
 
-
+    def get_assigned_to_you(self):
+        user = json.loads(self.api.get_user().text)
+        def filter_tasks(assigned_to_you):
+            if not (assigned_to_you['assignees'] is None):
+                for j in range(len(assigned_to_you['assignees'])):
+                    if assigned_to_you['assignees'][j]['login'] == user['login']:
+                        return True
+            return False
+        assigned_to_you = json.loads(self.api.get_issues().text)
+        return list(filter(filter_tasks, assigned_to_you))
 
     def create_window_tasks(self):
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         # убираю из списка задач мои, чтобы остались только назначенные.
-
-        def filter_tasks(tasks):
-            if not (tasks['assignees'] is None):
-                for j in range(len(tasks['assignees'])):
-                    if tasks['assignees'][j]['login'] == user['login']:
-                        return True
-            return False
-        tasks = json.loads(self.api.get_issues().text)
-        user = json.loads(self.api.get_user().text)
-        tasks = filter(filter_tasks, tasks)
-        tasks = list(tasks)
-        label = QLabel('Вам назначено - {} задач.'.format(len(tasks)))
+        assigned_to_you = self.get_assigned_to_you()
+        label = QLabel('Вам назначено - {} задач.'.format(len(assigned_to_you)))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
@@ -102,26 +101,26 @@ class Notification:
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
         y = 1
-        for i in range(len(tasks)):
-            label = QLabel(cut_the_string(tasks[i]['title'], 50))
+        for i in range(len(assigned_to_you)):
+            label = QLabel(cut_the_string(assigned_to_you[i]['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             self.ui.append(label)
-            task_id = re.search(r'/issues/.+', tasks[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(tasks[i]['repository']['full_name'],
-                                                                task_id, self.formatting_the_date(tasks[i]['created_at']).strftime('%d-%m-%Y'),
-                                                                tasks[i]['user']['login']), 60)
+            task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
+            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
+                                                                task_id, self.formatting_the_date(assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
+                                                                assigned_to_you[i]['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not(tasks[i]['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(tasks[i]['milestone']['title']), 50))
+            if not(assigned_to_you[i]['milestone'] is None):
+                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you[i]['milestone']['title']), 50))
                 layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(tasks[i]['html_url'].replace("http://", '')))
-            open_tasks = self.open_url(tasks[i]['html_url'])
+            button = QPushButton("Перейти в {}".format(assigned_to_you[i]['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(assigned_to_you[i]['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
