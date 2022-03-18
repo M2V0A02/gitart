@@ -1,4 +1,3 @@
-import time
 import traceback
 import PyQt5.QtSvg
 from PyQt5 import QtCore, QtWidgets
@@ -59,6 +58,7 @@ class Notification:
         self.main_window.setFixedSize(830, 830)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
+        self.update_button = QPushButton()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
@@ -330,10 +330,10 @@ class Api:
         return response
 
     def get_user(self):
-            self.check_connection_server()
-            response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
-            logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
-            return response
+        self.check_connection_server()
+        response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
+        logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
+        return response
 
     def set_access_token(self, access_token):
         logging.debug("Перезапись токена доступа: {}.".format(access_token))
@@ -567,7 +567,6 @@ class TrayIcon:
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
         to_yaml['token'] = ''
-        self.data = []
         self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
