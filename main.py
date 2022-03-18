@@ -93,47 +93,47 @@ class Notification:
         user = json.loads(self.api.get_user().text)
         # убираю из списка задач мои, чтобы остались только назначенные.
 
-        def filter_tasks(assigned_to_you):
-            if not (assigned_to_you['assignees'] is None):
-                for j in range(len(assigned_to_you['assignees'])):
-                    if assigned_to_you['assignees'][j]['login'] == user['login']:
+        def filter_tasks(assigned_to_you_tasks):
+            if not (assigned_to_you_tasks['assignees'] is None):
+                for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
+                    if assigned_to_you_task['login'] == user['login']:
                         return True
             return False
         assigned_to_you = json.loads(self.api.get_issues().text)
         return list(filter(filter_tasks, assigned_to_you))
 
-    def show_assigned_to_you(self, assigned_to_you, main_layout):
+    def show_assigned_to_you(self, assigned_to_you_tasks, main_layout):
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
-        y = 1
-        for i in range(len(assigned_to_you)):
-            label = QLabel(cut_the_string(assigned_to_you[i]['title'], 50))
+        y = 0
+        for assigned_to_you_task in assigned_to_you_tasks:
+            label = QLabel(cut_the_string(assigned_to_you_task['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
-            task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
+            task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
+            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
                                                                 task_id, self.formatting_the_date(
-                    assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
-                                                                assigned_to_you[i]['user']['login']), 60)
+                    assigned_to_you_task['created_at']).strftime('%d-%m-%Y'),
+                                                                assigned_to_you_task['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not (assigned_to_you[i]['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you[i]['milestone']['title']), 50))
+            if not (assigned_to_you_task['milestone'] is None):
+                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you_task['milestone']['title']), 50))
                 layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you[i]['html_url'].replace("http://", '')))
-            open_tasks = self.open_url(assigned_to_you[i]['html_url'])
+            button = QPushButton("Перейти в {}".format(assigned_to_you_task['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(assigned_to_you_task['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             layout.addWidget(button)
             layout_message.addWidget(div)
-            y = i
-            if (i + 1) % number_of_messages_per_line == 0:
+            y += 1
+            if y % number_of_messages_per_line == 0:
                 main_layout.addLayout(layout_message)
                 layout_message = QHBoxLayout()
         if not (y + 1 % number_of_messages_per_line == 0):
@@ -178,10 +178,10 @@ class Notification:
         return addititonal_information
 
     def show_notifications(self, notifications, main_layout):
-        for i in range(len(notifications)):
-            additional_information = self.get_additional_information(notifications[i])
-            repo = notifications[i]['repository']['full_name']
-            created_time = str(self.formatting_the_date(notifications[i]['repository']['owner']['created']))
+        for notification in notifications:
+            additional_information = self.get_additional_information(notification)
+            repo = notification['repository']['full_name']
+            created_time = str(self.formatting_the_date(notification['repository']['owner']['created']))
             text_title = 'Репозиторий: {}, время создания: {}'.format(repo, created_time)
             if 'user_login' in additional_information:
                 text_title = cut_the_string("{}, пользователь - {}.".format(text_title,
@@ -194,9 +194,9 @@ class Notification:
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
-            open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
-            number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
-            button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
+            open_notification = self.open_url(notification['subject']['url'].replace('api/v1/repos/', ''))
+            number_issues = re.search(r'issues/\d+', notification['subject']['url'])[0].replace('issues/', '')
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['repository']['full_name'],
                                                                     number_issues))
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
