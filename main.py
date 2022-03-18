@@ -1,4 +1,3 @@
-import time
 import traceback
 import PyQt5.QtSvg
 from PyQt5 import QtCore, QtWidgets
@@ -59,6 +58,7 @@ class Notification:
         self.main_window.setFixedSize(830, 830)
         self.main_window.setWindowTitle("Новые сообщения")
         self.window = QWidget()
+        self.update_button = QPushButton()
         icon = QIcon('img/logo.svg')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
@@ -93,47 +93,47 @@ class Notification:
         user = json.loads(self.api.get_user().text)
         # убираю из списка задач мои, чтобы остались только назначенные.
 
-        def filter_tasks(assigned_to_you):
-            if not (assigned_to_you['assignees'] is None):
-                for j in range(len(assigned_to_you['assignees'])):
-                    if assigned_to_you['assignees'][j]['login'] == user['login']:
+        def filter_tasks(assigned_to_you_tasks):
+            if not (assigned_to_you_tasks['assignees'] is None):
+                for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
+                    if assigned_to_you_task['login'] == user['login']:
                         return True
             return False
         assigned_to_you = json.loads(self.api.get_issues().text)
         return list(filter(filter_tasks, assigned_to_you))
 
-    def show_assigned_to_you(self, assigned_to_you, main_layout):
+    def show_assigned_to_you(self, assigned_to_you_tasks, main_layout):
         number_of_messages_per_line = 2
         layout_message = QHBoxLayout()
-        y = 1
-        for i in range(len(assigned_to_you)):
-            label = QLabel(cut_the_string(assigned_to_you[i]['title'], 50))
+        y = 0
+        for assigned_to_you_task in assigned_to_you_tasks:
+            label = QLabel(cut_the_string(assigned_to_you_task['title'], 50))
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
-            task_id = re.search(r'/issues/.+', assigned_to_you[i]['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you[i]['repository']['full_name'],
+            task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
+            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
                                                                 task_id, self.formatting_the_date(
-                    assigned_to_you[i]['created_at']).strftime('%d-%m-%Y'),
-                                                                assigned_to_you[i]['user']['login']), 60)
+                    assigned_to_you_task['created_at']).strftime('%d-%m-%Y'),
+                                                                assigned_to_you_task['user']['login']), 60)
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
-            if not (assigned_to_you[i]['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you[i]['milestone']['title']), 50))
+            if not (assigned_to_you_task['milestone'] is None):
+                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you_task['milestone']['title']), 50))
                 layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you[i]['html_url'].replace("http://", '')))
-            open_tasks = self.open_url(assigned_to_you[i]['html_url'])
+            button = QPushButton("Перейти в {}".format(assigned_to_you_task['html_url'].replace("http://", '')))
+            open_tasks = self.open_url(assigned_to_you_task['html_url'])
             button.clicked.connect(open_tasks)
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             layout.addWidget(button)
             layout_message.addWidget(div)
-            y = i
-            if (i + 1) % number_of_messages_per_line == 0:
+            y += 1
+            if y % number_of_messages_per_line == 0:
                 main_layout.addLayout(layout_message)
                 layout_message = QHBoxLayout()
         if not (y + 1 % number_of_messages_per_line == 0):
@@ -145,7 +145,16 @@ class Notification:
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         assigned_to_you = self.get_assigned_to_you()
-        label = QLabel('Вам назначено - {} задач.'.format(len(assigned_to_you)))
+        if len(assigned_to_you) == 1:
+            ending_task = "а"
+            ending_assign = "а"
+        if 1 < len(assigned_to_you) < 5:
+            ending_assign = "ы"
+            ending_task = "и"
+        else:
+            ending_assign = "о"
+            ending_task = ''
+        label = QLabel('Вам назначен{} - {} задач{}.'.format(ending_assign, len(assigned_to_you), ending_task))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
@@ -165,7 +174,8 @@ class Notification:
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
                 addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
             except json.decoder.JSONDecodeError:
-                logging.debug("Не получилось получить комментарий - {}".format(notifications['subject']['latest_comment_url']))
+                logging.error("Не получилось, получить комментарий - {}".
+                              format(notifications['subject']['latest_comment_url']))
         if not(notifications['subject']['url'] == ''):
             try:
                 repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
@@ -174,15 +184,15 @@ class Notification:
                 notification = json.loads(self.api.get_repos_issues(repo, issues).text)
                 addititonal_information['user_login'] = (notification['user']['login'])
             except json.decoder.JSONDecodeError:
-                logging.debug("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
+                logging.error("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
         return addititonal_information
 
     def show_notifications(self, notifications, main_layout):
-        for i in range(len(notifications)):
-            additional_information = self.get_additional_information(notifications[i])
-            repo = notifications[i]['repository']['full_name']
-            created_time = str(self.formatting_the_date(notifications[i]['repository']['owner']['created']))
-            text_title = 'Репозиторий: {}, время создания: {}'.format(repo, created_time)
+        for notification in notifications:
+            additional_information = self.get_additional_information(notification)
+            repo = notification['repository']['full_name']
+            created_time = str(self.formatting_the_date(notification['repository']['owner']['created']))
+            text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, created_time)
             if 'user_login' in additional_information:
                 text_title = cut_the_string("{}, пользователь - {}.".format(text_title,
                                                                             additional_information['user_login']), 130)
@@ -194,9 +204,9 @@ class Notification:
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
-            open_notification = self.open_url(notifications[i]['subject']['url'].replace('api/v1/repos/', ''))
-            number_issues = re.search(r'issues/\d+', notifications[i]['subject']['url'])[0].replace('issues/', '')
-            button = QPushButton("Перейти в - {}/issues/{} ".format(notifications[i]['repository']['full_name'],
+            open_notification = self.open_url(notification['subject']['url'].replace('api/v1/repos/', ''))
+            number_issues = re.search(r'issues/\d+', notification['subject']['url'])[0].replace('issues/', '')
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['repository']['full_name'],
                                                                     number_issues))
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
@@ -208,7 +218,13 @@ class Notification:
         notifications = json.loads(self.api.get_notifications().text)
         widget = QWidget()
         main_layout = QVBoxLayout()
-        label = QLabel("Не прочитано - {} сообщений.".format(len(notifications)))
+        if len(notifications) == 1:
+            ending = "ие"
+        elif 1 < len(notifications) < 5:
+            ending = "ия"
+        else:
+            ending = "ий"
+        label = QLabel("Не прочитано - {} сообщен{}.".format(len(notifications), ending))
         label.setStyleSheet("font-size:24px;")
         main_layout.addWidget(label)
         layout = QHBoxLayout()
@@ -216,7 +232,7 @@ class Notification:
         self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
-        label = QLabel("Последние обновление - {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
+        label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
         layout.addWidget(label)
         main_layout.addLayout(layout)
         self.show_notifications(notifications, main_layout)
@@ -242,7 +258,7 @@ class Notification:
 class Api:
 
     def __init__(self, server, access_token, tray_icon):
-        logging.debug("Создание экземляра класса - Api.")
+        logging.debug("Создание экземляра класса - Api")
         self.__server = server
         self.tray_icon = tray_icon
         self.__access_token = access_token
@@ -306,37 +322,37 @@ class Api:
     def get_notifications(self):
         self.check_connection_server()
         response = requests.get("{}/api/v1/notifications?access_token={}".format(self.__server, self.__access_token))
-        logging.debug("Получение новых сообщений для пользователя.")
+        logging.debug("Получение новых сообщений")
         return response
 
     def get_issues(self):
         self.check_connection_server()
         response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
                                                                                                     self.__access_token))
-        logging.debug("Получение задач для пользователя.")
+        logging.debug("Получение задач")
         return response
 
     def get_repos_issues(self, repo, issues):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.__server, repo, issues))
-        logging.debug("Получение информации о задачи в репозитории.")
+        logging.debug("Получение информации о задачи в репозитории")
         return response
 
     def get_comment(self, comment):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
                                                                                                             comment))
-        logging.debug("Получение комментария.")
+        logging.debug("Получение комментария")
         return response
 
     def get_user(self):
-            self.check_connection_server()
-            response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
-            logging.debug("Обращение к Api для получение информацию о своей учетной записи: ")
-            return response
+        self.check_connection_server()
+        response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
+        logging.debug("Обращение к Api для получение информацию о своей учетной записи")
+        return response
 
     def set_access_token(self, access_token):
-        logging.debug("Перезапись токена доступа: {}.".format(access_token))
+        logging.debug("Перезапись токена доступа")
         self.__access_token = access_token
 
     @property
@@ -348,14 +364,14 @@ class Api:
         return self.__server
 
     def set_server(self, server):
-        logging.debug("Перезапись адреса сервера: {}.".format(server))
+        logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
 
 class Config:
 
     def __init__(self, name):
-        logging.debug("Создание экземпляра класса - конфиг, имя: {}.".format(name))
+        logging.debug("Создание экземпляра класса - Config, имя конфига: {}".format(name))
         self.name = name
         if not (os.path.exists(name)):
             to_yaml = {"server": '', "token": '', "delay_notification": "45"}
@@ -363,7 +379,7 @@ class Config:
                 yaml.dump(to_yaml, f_obj)
 
     def save_settings(self, dict_setting):
-        logging.debug("Перезапись  настроек в конфигурационном файле, настройки: {}.".format(str(dict_setting)))
+        logging.debug("Перезапись  настроек в конфигурационном файле, новые настройки: {}".format(str(dict_setting)))
         with open(self.name) as f_obj:
             to_yaml = yaml.load(f_obj, Loader=yaml.FullLoader)
         for key, value in dict_setting.items():
@@ -372,7 +388,7 @@ class Config:
             yaml.dump(to_yaml, f_obj)
 
     def get_settings(self):
-        logging.debug("Получение данных из конфигурационого файла.")
+        logging.debug("Получение данных из конфигурационого файла")
         with open(self.name) as f_obj:
             read_data = yaml.load(f_obj, Loader=yaml.FullLoader)
         return read_data
@@ -400,7 +416,7 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
 
     def my_show(self):
-        logging.debug("Показ окна настроек.")
+        logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
         screen_size = (screen_geometry.width(), screen_geometry.height())
@@ -410,7 +426,7 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.move(x, y)
 
     def save_settings(self):
-        logging.debug("Передача новых настроек в конфигурационный файл.")
+        logging.debug("Передача новых настроек в конфигурационный файл")
         to_yaml = self.tray_icon.config.get_settings()
         to_yaml['token'] = self.edit_token.toPlainText()
         self.tray_icon.api.set_access_token(to_yaml['token'])
@@ -466,7 +482,7 @@ class TrayIcon:
             self.timer_animation.start(2000)
 
     def download_icon(self):
-        logging.debug("Скачивание изображения из интернета.")
+        logging.debug("Скачивание изображения из интернета")
         response = self.api.get_user()
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
@@ -500,14 +516,14 @@ class TrayIcon:
             self.tray.show()
 
     def set_icon(self, icon):
-        logging.debug("Установление изображение для TrayIcon, путь до картинки: {}.".format(icon))
+        logging.debug("Установление изображение для TrayIcon, путь до картинки: {}".format(icon))
         self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self, response):
         self.tray.authorization = True
-        logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}.".format(response))
+        logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(response))
         user = json.loads(response.text)
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
@@ -535,7 +551,7 @@ class TrayIcon:
     def constructor_menu(self):
         self.menu_items = []
         self.menu = QMenu()
-        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon.")
+        logging.debug("TrayIcon: Создание контекстного меню для TrayIcon")
         response = self.api.get_user()
         if response is None:
             logging.debug("response - пустой")
@@ -543,7 +559,7 @@ class TrayIcon:
             if response.status_code == 200:
                 self.authentication_successful(response)
             else:
-                logging.debug("TrayIcon: Токена доступа нет или он недействителен.")
+                logging.debug("TrayIcon: Токена доступа нет или он недействителен")
                 self.tray.setToolTip("Необходима авторизация через токен")
         auth = QAction("Настройки")
         def_setting = self.create_settings_window
@@ -567,7 +583,6 @@ class TrayIcon:
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
         to_yaml['token'] = ''
-        self.data = []
         self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
