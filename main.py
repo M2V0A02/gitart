@@ -164,7 +164,7 @@ class Notification:
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
                 addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
             except json.decoder.JSONDecodeError:
-                logging.error("Не получилось, получить комментарий - {}".
+                logging.error("Не получилось получить комментарий, url - {}".
                               format(notifications['subject']['latest_comment_url']))
         if not(notifications['subject']['url'] == ''):
             try:
@@ -283,19 +283,19 @@ class Api:
                 requests.get("{}".format(self.__server))
                 if i > 0:
                     msg = QMessageBox()
-                    msg.setText('Соединение с сервером, востановленно.')
+                    msg.setText('Соединение с сервером востановленно.')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
                     msg = QMessageBox()
-                    msg.setWindowTitle('Соединение с сервером, не установлено.')
+                    msg.setWindowTitle('Соединение с сервером не установлено.')
                     msg.setText('Сервер не отвечает')
                     msg.exec()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
-                    dlg.setWindowTitle("Нужно, поменять сервер?")
+                    dlg.setWindowTitle("Нужно поменять сервер?")
                     button_accept = QPushButton("Да")
 
                     def func():
@@ -487,7 +487,7 @@ class TrayIcon:
         response = self.api.get_user()
         user = json.loads(response.text)
         if len(self.notifications) == 0:
-            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
+            logging.debug("Закончить анимацию оповещения о новых сообщениях")
             self.set_icon("img/{}.jpg".format(str(user['id'])))
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
