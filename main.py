@@ -475,7 +475,7 @@ class TrayIcon:
             self.timer_animation.start(2000)
 
     def download_icon(self):
-        logging.debug("Скачивание изображения из интернета")
+        logging.debug("Скачивание аватара пользователя.")
         response = self.api.get_user()
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
