@@ -41,14 +41,6 @@ def crash_script(error_type, value, tb):
     sys.__excepthook__(error_type, value, tb)
 
 
-def cut_the_string(string, length):
-    if len(string) < 3:
-        return string
-    if len(string) > length:
-        string = '{}...'.format(string[0:length - 3])
-    return string
-
-
 class Notification:
 
     def __init__(self, api, tray):
@@ -107,22 +99,27 @@ class Notification:
         layout_message = QHBoxLayout()
         y = 0
         for assigned_to_you_task in assigned_to_you_tasks:
-            label = QLabel(cut_the_string(assigned_to_you_task['title'], 50))
+            name_label = '{:.47}...'.format(assigned_to_you_task['title']) if len(assigned_to_you_task) > 50\
+                else assigned_to_you_task['title']
+            label = QLabel(name_label)
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
+            body = "{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
                                                                 task_id, self.formatting_the_date(
                     assigned_to_you_task['created_at']).strftime('%d-%m-%Y'),
-                                                                assigned_to_you_task['user']['login']), 60)
+                                                                assigned_to_you_task['user']['login'])
+            body = '{:.57}...'.format(body) if len(body) > 60 else body
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
             if not (assigned_to_you_task['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you_task['milestone']['title']), 50))
+                name_title = "Этап: {}".format(assigned_to_you_task['milestone']['title'])
+                name_title = '{:.47}...'.format(name_title) if len(name_title) > 50 else name_title
+                label = QLabel(name_title)
                 layout.addWidget(label)
             button = QPushButton("Перейти в {}".format(assigned_to_you_task['html_url'].replace("http://", '')))
             open_tasks = self.open_url(assigned_to_you_task['html_url'])
@@ -148,7 +145,7 @@ class Notification:
         if len(assigned_to_you) == 1:
             ending_task = "а"
             ending_assign = "а"
-        if 1 < len(assigned_to_you) < 5:
+        elif 1 < len(assigned_to_you) < 5:
             ending_assign = "ы"
             ending_task = "и"
         else:
@@ -194,8 +191,8 @@ class Notification:
             created_time = str(self.formatting_the_date(notification['repository']['owner']['created']))
             text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, created_time)
             if 'user_login' in additional_information:
-                text_title = cut_the_string("{}, пользователь - {}.".format(text_title,
-                                                                            additional_information['user_login']), 130)
+                text_title = "{}, пользователь - {}.".format(text_title, additional_information['user_login'])
+                text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             main_layout.addWidget(label)
