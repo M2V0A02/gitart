@@ -20,14 +20,6 @@ from PyQt5.QtWinExtras import QtWin
 indent_format = " " * 24
 
 
-def show_message(message, title, style=''):
-    msg = QMessageBox()
-    msg.setWindowTitle(title)
-    msg.setText(message)
-    msg.setStyleSheet(style)
-    msg.exec()
-
-
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
@@ -39,14 +31,6 @@ def crash_script(error_type, value, tb):
                                                                            frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
-
-
-def cut_the_string(string, length):
-    if len(string) < 3:
-        return string
-    if len(string) > length:
-        string = '{}...'.format(string[0:length - 3])
-    return string
 
 
 class Notification:
@@ -76,10 +60,11 @@ class Notification:
         self.scroll.resize(830, 830)
 
     def controller_tab_clicked(self, number_tab):
-        if number_tab == 0:
-            self.create_window_notification()
-        if number_tab == 1:
-            self.create_window_tasks()
+        controller = {
+            0: self.create_window_notification(),
+            1: self.create_window_tasks()
+        }
+        controller[number_tab]
 
     @staticmethod
     def formatting_the_date(string_date):
@@ -107,22 +92,27 @@ class Notification:
         layout_message = QHBoxLayout()
         y = 0
         for assigned_to_you_task in assigned_to_you_tasks:
-            label = QLabel(cut_the_string(assigned_to_you_task['title'], 50))
+            name_label = '{:.47}...'.format(assigned_to_you_task['title']) if len(assigned_to_you_task) > 50\
+                else assigned_to_you_task['title']
+            label = QLabel(name_label)
             label.setStyleSheet("font-size:18px;")
             div = QWidget()
             layout = QVBoxLayout(div)
             div.setStyleSheet("margin-left:15px; width:345px;")
             layout.addWidget(label)
             task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
-            body = cut_the_string("{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
+            body = "{}#{} открыта {} {}.".format(assigned_to_you_task['repository']['full_name'],
                                                                 task_id, self.formatting_the_date(
                     assigned_to_you_task['created_at']).strftime('%d-%m-%Y'),
-                                                                assigned_to_you_task['user']['login']), 60)
+                                                                assigned_to_you_task['user']['login'])
+            body = '{:.57}...'.format(body) if len(body) > 60 else body
             label = QLabel(body)
             label.setStyleSheet("font-size:12px;")
             layout.addWidget(label)
             if not (assigned_to_you_task['milestone'] is None):
-                label = QLabel(cut_the_string("Этап: {}".format(assigned_to_you_task['milestone']['title']), 50))
+                name_title = "Этап: {}".format(assigned_to_you_task['milestone']['title'])
+                name_title = '{:.47}...'.format(name_title) if len(name_title) > 50 else name_title
+                label = QLabel(name_title)
                 layout.addWidget(label)
             button = QPushButton("Перейти в {}".format(assigned_to_you_task['html_url'].replace("http://", '')))
             open_tasks = self.open_url(assigned_to_you_task['html_url'])
@@ -148,7 +138,7 @@ class Notification:
         if len(assigned_to_you) == 1:
             ending_task = "а"
             ending_assign = "а"
-        if 1 < len(assigned_to_you) < 5:
+        elif 1 < len(assigned_to_you) < 5:
             ending_assign = "ы"
             ending_task = "и"
         else:
@@ -174,7 +164,7 @@ class Notification:
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
                 addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
             except json.decoder.JSONDecodeError:
-                logging.error("Не получилось, получить комментарий - {}".
+                logging.error("Не получилось получить комментарий, url - {}".
                               format(notifications['subject']['latest_comment_url']))
         if not(notifications['subject']['url'] == ''):
             try:
@@ -194,8 +184,8 @@ class Notification:
             created_time = str(self.formatting_the_date(notification['repository']['owner']['created']))
             text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, created_time)
             if 'user_login' in additional_information:
-                text_title = cut_the_string("{}, пользователь - {}.".format(text_title,
-                                                                            additional_information['user_login']), 130)
+                text_title = "{}, пользователь - {}.".format(text_title, additional_information['user_login'])
+                text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             main_layout.addWidget(label)
@@ -293,16 +283,19 @@ class Api:
                 requests.get("{}".format(self.__server))
                 if i > 0:
                     msg = QMessageBox()
-                    msg.setText('Соединение с сервером, востановленно.')
+                    msg.setText('Соединение с сервером востановленно.')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
-                    show_message('Соединение с сервером, не установлено.', 'Сервер не отвечает')
+                    msg = QMessageBox()
+                    msg.setWindowTitle('Соединение с сервером не установлено.')
+                    msg.setText('Сервер не отвечает')
+                    msg.exec()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
-                    dlg.setWindowTitle("Нужно, поменять сервер?")
+                    dlg.setWindowTitle("Нужно поменять сервер?")
                     button_accept = QPushButton("Да")
 
                     def func():
@@ -482,7 +475,7 @@ class TrayIcon:
             self.timer_animation.start(2000)
 
     def download_icon(self):
-        logging.debug("Скачивание изображения из интернета")
+        logging.debug("Скачивание аватара пользователя.")
         response = self.api.get_user()
         resource = requests.get(json.loads(response.text)['avatar_url'])
         if not(os.path.exists('img')):
@@ -494,7 +487,7 @@ class TrayIcon:
         response = self.api.get_user()
         user = json.loads(response.text)
         if len(self.notifications) == 0:
-            logging.debug("Закончить анимацию, оповещения о новых сообщениях")
+            logging.debug("Закончить анимацию оповещения о новых сообщениях")
             self.set_icon("img/{}.jpg".format(str(user['id'])))
             return
         if self.name_icon == "img/notification.png" and response.status_code == 200:
