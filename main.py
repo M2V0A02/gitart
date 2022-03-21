@@ -60,10 +60,11 @@ class Notification:
         self.scroll.resize(830, 830)
 
     def controller_tab_clicked(self, number_tab):
-        if number_tab == 0:
-            self.create_window_notification()
-        if number_tab == 1:
-            self.create_window_tasks()
+        controller = {
+            0: self.create_window_notification(),
+            1: self.create_window_tasks()
+        }
+        controller[number_tab]
 
     @staticmethod
     def formatting_the_date(string_date):
