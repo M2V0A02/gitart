@@ -17,7 +17,7 @@ import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
-indent_format = " " * 24
+indent_format = 24
 
 
 def crash_script(error_type, value, tb):
@@ -25,9 +25,9 @@ def crash_script(error_type, value, tb):
     critical_error = "{}: {},  \n".format(error_type, value)
 
     for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(indent_format, frame_summary.filename,
+        critical_error += "{:indent_format}File '{}', line {}, in {}, \n{:indent_format} {} \n".format('', frame_summary.filename,
                                                                            frame_summary.lineno,
-                                                                           frame_summary.name, indent_format,
+                                                                           frame_summary.name, '',
                                                                            frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
@@ -282,16 +282,13 @@ class Api:
             try:
                 requests.get("{}".format(self.__server))
                 if i > 0:
-                    msg = QMessageBox()
-                    msg.setText('Соединение с сервером востановленно.')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение востановленно', 'Соединение с сервером востановленно')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
-                    msg = QMessageBox()
-                    msg.setWindowTitle('Соединение с сервером не установлено.')
-                    msg.setText('Сервер не отвечает')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение с сервером не установлено', 'Сервер не отвечает')
                     msg.exec()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
