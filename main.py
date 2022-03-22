@@ -282,16 +282,13 @@ class Api:
             try:
                 requests.get("{}".format(self.__server))
                 if i > 0:
-                    msg = QMessageBox()
-                    msg.setText('Соединение с сервером востановленно.')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение востановленно', 'Соединение с сервером востановленно')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                     requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
                 if i == 0:
-                    msg = QMessageBox()
-                    msg.setWindowTitle('Соединение с сервером не установлено.')
-                    msg.setText('Сервер не отвечает')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение с сервером не установлено', 'Сервер не отвечает')
                     msg.exec()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
