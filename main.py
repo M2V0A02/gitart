@@ -17,7 +17,7 @@ import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
-indent_format = " " * 24
+indent_format = 24
 
 
 def crash_script(error_type, value, tb):
@@ -25,9 +25,9 @@ def crash_script(error_type, value, tb):
     critical_error = "{}: {},  \n".format(error_type, value)
 
     for frame_summary in traces:
-        critical_error += "{}File '{}', line {}, in {}, \n{} {} \n".format(indent_format, frame_summary.filename,
+        critical_error += "{:indent_format}File '{}', line {}, in {}, \n{:indent_format} {} \n".format('', frame_summary.filename,
                                                                            frame_summary.lineno,
-                                                                           frame_summary.name, indent_format,
+                                                                           frame_summary.name, '',
                                                                            frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
