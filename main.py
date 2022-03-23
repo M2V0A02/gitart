@@ -247,10 +247,10 @@ class Notification:
 
 class Api:
 
-    def __init__(self, server, access_token, tray_icon):
+    def __init__(self, server, access_token, tray):
         logging.debug("Создание экземляра класса - Api")
         self.__server = server
-        self.tray_icon = tray_icon
+        self.tray = tray
         self.__access_token = access_token
 
     def window_change_server(self):
@@ -266,13 +266,12 @@ class Api:
         layout.addWidget(button)
 
         def change_server(dialog_window):
+
             def func():
                 dialog_window.close()
-                self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                self.tray.config.save_settings({'server': edit_server.toPlainText()})
                 self.__server = edit_server.toPlainText()
-
             return func
-
         button.clicked.connect(change_server(dlg))
         dlg.exec()
 
@@ -282,7 +281,7 @@ class Api:
             try:
                 requests.get("{}".format(self.__server))
                 if i > 0:
-                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение востановленно', 'Соединение с сервером востановленно')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение восстановлено', 'Соединение с сервером восстановлено')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
@@ -290,6 +289,10 @@ class Api:
                 if i == 0:
                     msg = QMessageBox(QMessageBox.NoIcon, 'Соединение с сервером не установлено', 'Сервер не отвечает')
                     msg.exec()
+                    icon = QIcon('img/connection_lost.png')
+                    self.tray.tray.setIcon(icon)
+                    self.tray.window_notification.main_window.hide()
+                    self.tray.setting.hide()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
                     dlg.setWindowTitle("Нужно поменять сервер?")
@@ -437,7 +440,6 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
-        self.window_notification = ''
         self.tray.authorization = False
         self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
@@ -447,10 +449,10 @@ class TrayIcon:
         self.tray.setVisible(True)
         self.menu = QMenu()
         self.hint = ''
-        self.setting = ''
         self.notifications = []
         self.timer_constructor_menu = threading.Timer(3, self.constructor_menu)
         self.config = Config('conf.yaml')
+        self.setting = Setting(self)
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
         self.window_notification = Notification(self.api, self)
