@@ -15,7 +15,6 @@ import re
 import threading
 import UI.setting_ui as setting_ui
 from PyQt5.QtWinExtras import QtWin
-
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
 
@@ -40,7 +39,7 @@ class Notification:
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
         self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle("Новые сообщения")
+        self.main_window.setWindowTitle("Gitart")
         self.window = QWidget()
         self.update_button = QPushButton()
         icon = QIcon('img/logo.svg')
@@ -247,10 +246,10 @@ class Notification:
 
 class Api:
 
-    def __init__(self, server, access_token, tray_icon):
+    def __init__(self, server, access_token, tray):
         logging.debug("Создание экземляра класса - Api")
         self.__server = server
-        self.tray_icon = tray_icon
+        self.tray = tray
         self.__access_token = access_token
 
     def window_change_server(self):
@@ -266,13 +265,12 @@ class Api:
         layout.addWidget(button)
 
         def change_server(dialog_window):
+
             def func():
                 dialog_window.close()
-                self.tray_icon.config.save_settings({'server': edit_server.toPlainText()})
+                self.tray.config.save_settings({'server': edit_server.toPlainText()})
                 self.__server = edit_server.toPlainText()
-
             return func
-
         button.clicked.connect(change_server(dlg))
         dlg.exec()
 
@@ -282,7 +280,7 @@ class Api:
             try:
                 requests.get("{}".format(self.__server))
                 if i > 0:
-                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение востановленно', 'Соединение с сервером востановленно')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение восстановлено', 'Соединение с сервером восстановлено')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
@@ -290,6 +288,10 @@ class Api:
                 if i == 0:
                     msg = QMessageBox(QMessageBox.NoIcon, 'Соединение с сервером не установлено', 'Сервер не отвечает')
                     msg.exec()
+                    icon = QIcon('img/connection_lost.png')
+                    self.tray.tray.setIcon(icon)
+                    self.tray.window_notification.main_window.hide()
+                    self.tray.setting.hide()
                     dlg = QDialog()
                     dlg.setStyleSheet('width:150px; height:15px;')
                     dlg.setWindowTitle("Нужно поменять сервер?")
@@ -437,7 +439,6 @@ class TrayIcon:
         logging.debug("Создание экземпляра класса - TrayIcon")
         self.app = app
         self.tray = QSystemTrayIcon()
-        self.window_notification = ''
         self.tray.authorization = False
         self.tray.activated.connect(self.controller_tray_icon)
         self.name_icon = icon
@@ -447,10 +448,10 @@ class TrayIcon:
         self.tray.setVisible(True)
         self.menu = QMenu()
         self.hint = ''
-        self.setting = ''
         self.notifications = []
         self.timer_constructor_menu = threading.Timer(3, self.constructor_menu)
         self.config = Config('conf.yaml')
+        self.setting = Setting(self)
         read_data = self.config.get_settings()
         self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
         self.window_notification = Notification(self.api, self)
@@ -543,6 +544,10 @@ class TrayIcon:
         self.menu = QMenu()
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon")
         response = self.api.get_user()
+        name_aplication = QAction("Gitart")
+        name_aplication.setEnabled(False)
+        self.menu.addAction(name_aplication)
+        self.menu_items.append(name_aplication)
         if response is None:
             logging.debug("response - пустой")
         else:
@@ -576,7 +581,7 @@ class TrayIcon:
         self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
-        self.set_icon('img/icon.png')
+        self.set_icon('img/dart.png')
         self.constructor_menu()
 
 
@@ -595,7 +600,7 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
     app.setQuitOnLastWindowClosed(False)
-    tray_icon = TrayIcon('img/icon.png', app)
+    tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
     app.exec_()
 
