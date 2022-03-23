@@ -40,7 +40,7 @@ class Notification:
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
         self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle("Новые сообщения")
+        self.main_window.setWindowTitle("Gitart")
         self.window = QWidget()
         self.update_button = QPushButton()
         icon = QIcon('img/logo.svg')
@@ -545,6 +545,10 @@ class TrayIcon:
         self.menu = QMenu()
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon")
         response = self.api.get_user()
+        name_aplication = QAction("Gitart")
+        name_aplication.setEnabled(False)
+        self.menu.addAction(name_aplication)
+        self.menu_items.append(name_aplication)
         if response is None:
             logging.debug("response - пустой")
         else:
@@ -578,7 +582,7 @@ class TrayIcon:
         self.tray.authorization = False
         self.api.set_access_token(to_yaml['token'])
         self.config.save_settings(to_yaml)
-        self.set_icon('img/icon.png')
+        self.set_icon('img/dart.png')
         self.constructor_menu()
 
 
@@ -597,7 +601,7 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
     app.setQuitOnLastWindowClosed(False)
-    tray_icon = TrayIcon('img/icon.png', app)
+    tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
     app.exec_()
 
