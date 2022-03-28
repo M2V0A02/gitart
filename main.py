@@ -14,6 +14,7 @@ import webbrowser
 import re
 import threading
 import UI.setting_ui as setting_ui
+import mySQLlite
 from PyQt5.QtWinExtras import QtWin
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
@@ -242,6 +243,33 @@ class Notification:
     def open_url(url):
         logging.debug("Переход по ссылке - {}".format(url))
         return lambda: webbrowser.open_new(url)
+
+
+class DB:
+    def __init__(self, api):
+        self.api = api
+
+    @staticmethod
+    def formatting_the_date(string_date):
+        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+        string_date = string_date + datetime.timedelta(hours=timezone)
+        return string_date
+
+    def save_notifications(self):
+        notifications = mySQLlite.Notifications
+        response = json.loads(self.api.get_notifications().text)
+        message = ""
+        if not (response['subject']['latest_comment_url'] == ''):
+                id_comments = re.search(r'comments/\d+', format(notifications['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                message = json.loads(self.api.get_comment(id_comments).text)['body']
+        user_login = response['user']['login']
+        full_name = response['repository']['full_name']
+        created_time = self.formatting_the_date(response['repository']['owner']['created'])
+        url = response['subject']['url']
+        notifications.save(notifications, message, user_login, full_name, created_time, url)
 
 
 class Api:
