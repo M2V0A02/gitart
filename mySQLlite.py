@@ -11,9 +11,10 @@ class AssignedTasks:
                     full_name TEXT, creator text, url TEXT, id_milestone INT);""".format(self.name_table))
         self.conn.commit()
 
-    def save(self, id_task, title, created_at, full_name, name, url, id_milestone=''):
-        self.cur.execute("""Insert INTO {}(id, title, created_at, full_name, name, url, id_milestone) VALUES 
-        ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, id_task, title, created_at, full_name, name, url, id_milestone))
+    def save(self, id_task, title, created_at, full_name, name, url, milestone_title):
+        self.cur.execute("""Insert INTO {}(id, title, created_at, full_name, name, url, milestone_title) VALUES 
+        ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, id_task, title, created_at, full_name,
+                                               name, url, milestone_title))
         self.conn.commit()
 
 
@@ -30,19 +31,6 @@ class Users:
         self.cur.execute(
             "Insert INTO {}(full_name, login, token, avatar_url) VALUES ({}, {}, {}, {})"
             .format(self.name_table, full_name, login, token, avatar_url))
-        self.conn.commit()
-
-
-class Milestone:
-    def __init__(self):
-        self.conn = conn
-        self.cur = conn.cursor()
-        self.name_table = "Milestone"
-        self.cur.execute("CREATE TABLE IF NOT EXISTS {}( id INT INCREMENT Primary KEY, title text);".format(self.name_table))
-        self.conn.commit()
-
-    def save(self, title):
-        self.cur.execute("Insert INTO {}(title) VALUES ({})".format(self.name_table, title))
         self.conn.commit()
 
 
