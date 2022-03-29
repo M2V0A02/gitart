@@ -294,7 +294,10 @@ class DB:
             created_time = self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y')
             creator = assigned_task['user']['login']
             url = assigned_task['html_url']
-            tasks.save(task_id, title, full_name, created_time, creator, url)
+            milestone_title = ''
+            if not (assigned_task['milestone'] is None):
+                milestone_title = assigned_task['milestone']['title']
+            tasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
     def save_user(self):
         user = mySQLlite.Users()
@@ -304,6 +307,7 @@ class DB:
         token = self.api.get_access_token()
         avatar_url = user_json['avatar_url']
         user.save(full_name, login, token, avatar_url)
+
 
 class Api:
 
