@@ -7,13 +7,13 @@ class AssignedTasks:
         self.conn = conn
         self.cur = conn.cursor()
         self.name_table = "AssignedTasks"
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INT INCREMENT Primary KEY , title TEXT, created_at TEXT,
-                    full_name TEXT, name text, url TEXT, id_milestone INT);""".format(self.name_table))
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INT Primary KEY , title TEXT, created_at TEXT,
+                    full_name TEXT, creator text, url TEXT, id_milestone INT);""".format(self.name_table))
         self.conn.commit()
 
-    def save(self, title, created_at, full_name, name, url, id_milestone=''):
-        self.cur.execute("""Insert INTO {}(title, created_at, full_name, name, url, id_milestone) VALUES 
-        ({}, {}, {}, {}, {}, {})""".format(self.name_table, title, created_at, full_name, name, url, id_milestone))
+    def save(self, id_task, title, created_at, full_name, name, url, id_milestone=''):
+        self.cur.execute("""Insert INTO {}(id, title, created_at, full_name, name, url, id_milestone) VALUES 
+        ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, id_task, title, created_at, full_name, name, url, id_milestone))
         self.conn.commit()
 
 
