@@ -17,6 +17,10 @@ class AssignedTasks:
                                                name, url, milestone_title))
         self.conn.commit()
 
+    def get_all(self):
+        self.cur.execute("Select * From {}".format(self.name_table))
+        return self.cur.fetchall()
+
 
 class Users:
     def __init__(self):
@@ -33,6 +37,10 @@ class Users:
             .format(self.name_table, full_name, login, token, avatar_url))
         self.conn.commit()
 
+    def get_all(self):
+        self.cur.execute("Select * From {}".format(self.name_table))
+        return self.cur.fetchall()
+
 
 class Notifications:
     def __init__(self):
@@ -48,3 +56,7 @@ class Notifications:
         self.cur.execute("Insert INTO {}(message, user_login, full_name, created_time, url) VALUES ({}, {}, {}, {}, {}"
                          .format(self.name_table, message, user_login, full_name, created_time, url))
         self.conn.commit()
+
+    def get_all(self):
+        self.cur.execute("Select * From {}".format(self.name_table))
+        return self.cur.fetchall()
