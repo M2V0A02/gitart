@@ -257,8 +257,20 @@ class DB:
         string_date = string_date + datetime.timedelta(hours=timezone)
         return string_date
 
+    def get_assigned_to_you(self, all_tasks):
+        user = json.loads(self.api.get_user().text)
+        # убираю из списка задач мои, чтобы остались только назначенные.
+
+        def filter_tasks(assigned_to_you_tasks):
+            if not (assigned_to_you_tasks['assignees'] is None):
+                for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
+                    if assigned_to_you_task['login'] == user['login']:
+                        return True
+            return False
+        return list(filter(filter_tasks, all_tasks))
+
     def save_notifications(self):
-        notifications = mySQLlite.Notifications
+        notifications = mySQLlite.Notifications()
         response = json.loads(self.api.get_notifications().text)
         message = ""
         if not (response['subject']['latest_comment_url'] == ''):
@@ -269,8 +281,29 @@ class DB:
         full_name = response['repository']['full_name']
         created_time = self.formatting_the_date(response['repository']['owner']['created'])
         url = response['subject']['url']
-        notifications.save(notifications, message, user_login, full_name, created_time, url)
+        notifications.save(message, user_login, full_name, created_time, url)
 
+    def save_assigned_tasks(self):
+        tasks = mySQLlite.AssignedTasks()
+        all_tasks = json.loads(self.api.get_issues().text)
+        assigned_tasks = self.get_assigned_to_you(all_tasks)
+        for assigned_task in assigned_tasks:
+            title = assigned_task['title']
+            task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
+            full_name = assigned_task['repository']['full_name']
+            created_time = self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y')
+            creator = assigned_task['user']['login']
+            url = assigned_task['html_url']
+            tasks.save(task_id, title, full_name, created_time, creator, url)
+
+    def save_user(self):
+        user = mySQLlite.Users()
+        user_json = json.loads(self.api.get_user())
+        full_name = user_json['full_name']
+        login = user_json['login']
+        token = self.api.get_access_token()
+        avatar_url = user_json['avatar_url']
+        user.save(full_name, login, token, avatar_url)
 
 class Api:
 
