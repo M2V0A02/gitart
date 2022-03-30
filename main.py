@@ -181,6 +181,7 @@ class Notification:
             main_layout.addWidget(button)
 
     def create_window_notification(self):
+        mySQLlite.Notifications().clear()
         DB(self.api).save_notifications()
         notifications = mySQLlite.Notifications().get_all()
         widget = QWidget()

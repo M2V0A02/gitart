@@ -68,3 +68,7 @@ class Notifications:
     def get_all(self):
         self.cur.execute("Select * From {}".format(self.name_table))
         return self.cur.fetchall()
+
+    def clear(self):
+        self.cur.execute("Delete From {}".format(self.name_table))
+        self.conn.commit()
