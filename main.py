@@ -25,7 +25,7 @@ def crash_script(error_type, value, tb):
     critical_error = "{}: {},  \n".format(error_type, value)
 
     for frame_summary in traces:
-        critical_error += "{:indent_format}File '{}', line {}, in {}, \n{:indent_format} {} \n".format('', frame_summary.filename,
+        critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
                                                                            frame_summary.lineno,
                                                                            frame_summary.name, '',
                                                                            frame_summary.line)
@@ -156,48 +156,24 @@ class Notification:
         self.tasks_scroll_area.setWidget(widget)
         self.tab_widget.update()
 
-    def get_additional_information(self, notifications):
-        addititonal_information = dict()
-        if not (notifications['subject']['latest_comment_url'] == ''):
-            try:
-                id_comments = re.search(r'comments/\d+', format(notifications['subject']
-                                                                ['latest_comment_url']))[0].replace('comments/', '')
-                addititonal_information['body'] = (json.loads(self.api.get_comment(id_comments).text)['body'])
-            except json.decoder.JSONDecodeError:
-                logging.error("Не получилось получить комментарий, url - {}".
-                              format(notifications['subject']['latest_comment_url']))
-        if not(notifications['subject']['url'] == ''):
-            try:
-                repo = re.search(r'repos/.+/issues', notifications['subject']['url'])[0].replace('repos/', '').replace(
-                    '/issues', '')
-                issues = re.search(r'/issues/.+', notifications['subject']['url'])[0].replace('/issues/', '')
-                notification = json.loads(self.api.get_repos_issues(repo, issues).text)
-                addititonal_information['user_login'] = (notification['user']['login'])
-            except json.decoder.JSONDecodeError:
-                logging.error("Не получилось получить задачи, url - {}".format(notifications['subject']['url']))
-        return addititonal_information
-
     def show_notifications(self, notifications, main_layout):
         for notification in notifications:
-            additional_information = self.get_additional_information(notification)
-            repo = notification['repository']['full_name']
-            created_time = str(self.formatting_the_date(notification['repository']['owner']['created']))
-            text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, created_time)
-            if 'user_login' in additional_information:
-                text_title = "{}, пользователь - {}.".format(text_title, additional_information['user_login'])
+            repo = notification['full_name']
+            text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, notification['created_time'])
+            if not(notification['user_login'] is None):
+                text_title = "{}, пользователь - {}.".format(text_title, notification['user_login'])
                 text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
             label = QLabel(text_title)
             label.setStyleSheet("font-size:12px;")
             main_layout.addWidget(label)
-            if 'body' in additional_information:
-                plain_text = QPlainTextEdit('Сообщение: {}.'.format(additional_information['body']))
+            if not(notification['message'] is None):
+                plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
-            open_notification = self.open_url(notification['subject']['url'].replace('api/v1/repos/', ''))
-            number_issues = re.search(r'issues/\d+', notification['subject']['url'])[0].replace('issues/', '')
-            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['repository']['full_name'],
-                                                                    number_issues))
+            open_notification = self.open_url(notification['url'].replace('api/v1/repos/', ''))
+            number_issues = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'], number_issues))
             button.setStyleSheet(
                 "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
                 " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
@@ -205,7 +181,8 @@ class Notification:
             main_layout.addWidget(button)
 
     def create_window_notification(self):
-        notifications = json.loads(self.api.get_notifications().text)
+        DB(self.api).save_notifications()
+        notifications = mySQLlite.Notifications().get_all()
         widget = QWidget()
         main_layout = QVBoxLayout()
         if len(notifications) == 1:
@@ -270,18 +247,24 @@ class DB:
         return list(filter(filter_tasks, all_tasks))
 
     def save_notifications(self):
-        notifications = mySQLlite.Notifications()
-        response = json.loads(self.api.get_notifications().text)
-        message = ""
-        if not (response['subject']['latest_comment_url'] == ''):
-                id_comments = re.search(r'comments/\d+', format(notifications['subject']
-                                                                ['latest_comment_url']))[0].replace('comments/', '')
-                message = json.loads(self.api.get_comment(id_comments).text)['body']
-        user_login = response['user']['login']
-        full_name = response['repository']['full_name']
-        created_time = self.formatting_the_date(response['repository']['owner']['created'])
-        url = response['subject']['url']
-        notifications.save(message, user_login, full_name, created_time, url)
+        notifications_sql = mySQLlite.Notifications()
+        notifications = json.loads(self.api.get_notifications().text)
+        for notification in notifications:
+            message = ''
+            if not (notification['subject']['latest_comment_url'] == ''):
+                    id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                    ['latest_comment_url']))[0].replace('comments/', '')
+                    message = "'{}'".format(json.loads(self.api.get_comment(id_comments).text)['body'])
+            user_login = ''
+            if not (notification['subject']['url'] == ''):
+                repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0].\
+                    replace('repos/', '').replace('/issues', '')
+                issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
+                user_login = "'{}'".format(json.loads(self.api.get_repos_issues(repo, issues).text)['user']['login'])
+            full_name = "'{}'".format(notification['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
+            url = "'{}'".format(notification['subject']['url'])
+            notifications_sql.save(message, user_login, full_name, created_time, url)
 
     def save_assigned_tasks(self):
         tasks = mySQLlite.AssignedTasks()
