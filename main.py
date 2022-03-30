@@ -272,24 +272,24 @@ class DB:
         all_tasks = json.loads(self.api.get_issues().text)
         assigned_tasks = self.get_assigned_to_you(all_tasks)
         for assigned_task in assigned_tasks:
-            title = assigned_task['title']
+            title = "'{}'".format(assigned_task['title'])
             task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            full_name = assigned_task['repository']['full_name']
-            created_time = self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y')
-            creator = assigned_task['user']['login']
-            url = assigned_task['html_url']
+            full_name = "'{}'".format(assigned_task['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
+            creator = "'{]'".format(assigned_task['user']['login'])
+            url = "'{}'".format(assigned_task['html_url'])
             milestone_title = ''
             if not (assigned_task['milestone'] is None):
-                milestone_title = assigned_task['milestone']['title']
+                milestone_title = "'{}'".format(assigned_task['milestone']['title'])
             tasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
     def save_user(self):
         user = mySQLlite.Users()
         user_json = json.loads(self.api.get_user())
-        full_name = user_json['full_name']
-        login = user_json['login']
-        token = self.api.get_access_token()
-        avatar_url = user_json['avatar_url']
+        full_name = "'{}'".format(user_json['full_name'])
+        login = "'{}'".format(user_json['login'])
+        token = "'{}'".format(self.api.get_access_token())
+        avatar_url = "'{}'".format(user_json['avatar_url'])
         user.save(full_name, login, token, avatar_url)
 
 
