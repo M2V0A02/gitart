@@ -545,6 +545,11 @@ class TrayIcon:
         self.user_logged = False
         logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(response))
         user = json.loads(response.text)
+        full_name = user['full_name']
+        login = user['login']
+        token = self.api.get_access_token()
+        avatar_url = user['avatar_url']
+        DB(self.api).Users.save(full_name, login, token, avatar_url)
         self.user_id = user['id']
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
