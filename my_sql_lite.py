@@ -15,11 +15,11 @@ class AssignedTasks:
         self.cur = conn.cursor()
         self.name_table = "AssignedTasks"
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INT Primary KEY , title TEXT, created_at TEXT,
-                    full_name TEXT, creator text, url TEXT, id_milestone INT);""".format(self.name_table))
+                    full_name TEXT, creator text, url TEXT, milestone_title Text);""".format(self.name_table))
         self.conn.commit()
 
     def save(self, id_task, title, created_at, full_name, name, url, milestone_title):
-        self.cur.execute("""Insert INTO {}(id, title, created_at, full_name, name, url, milestone_title) VALUES 
+        self.cur.execute("""Insert INTO {}(id, title, created_at, full_name, creator, url, milestone_title) VALUES 
         ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, id_task, title, created_at, full_name,
                                                name, url, milestone_title))
         self.conn.commit()
@@ -27,6 +27,10 @@ class AssignedTasks:
     def get_all(self):
         self.cur.execute("Select * From {}".format(self.name_table))
         return self.cur.fetchall()
+
+    def clear(self):
+        self.cur.execute("Delete From {}".format(self.name_table))
+        self.conn.commit()
 
 
 class Users:
