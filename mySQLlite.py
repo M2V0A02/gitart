@@ -2,6 +2,13 @@ import sqlite3
 conn = sqlite3.connect('api.db')
 
 
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
 class AssignedTasks:
     def __init__(self):
         self.conn = conn
@@ -46,14 +53,15 @@ class Notifications:
     def __init__(self):
         self.conn = conn
         self.cur = conn.cursor()
-        self.name_table = Notifications
+        conn.row_factory = dict_factory
+        self.name_table = "Notifications"
         self.cur.execute("""Create table IF NOT EXISTS {}
                     (id INT INCREMENT PRIMARY KEY, message TEXT, user_login TEXT, full_name TEXT, created_time TEXT,
                      url TEXT)""".format(self.name_table))
         self.conn.commit()
 
     def save(self, message, user_login, full_name, created_time, url):
-        self.cur.execute("Insert INTO {}(message, user_login, full_name, created_time, url) VALUES ({}, {}, {}, {}, {}"
+        self.cur.execute("Insert INTO {}(message, user_login, full_name, created_time, url) VALUES ({}, {}, {}, {}, {})"
                          .format(self.name_table, message, user_login, full_name, created_time, url))
         self.conn.commit()
 
