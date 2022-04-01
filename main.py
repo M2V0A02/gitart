@@ -141,32 +141,21 @@ class Notification:
         self.tasks_scroll_area.setWidget(widget)
         self.tab_widget.update()
 
-    def show_notifications(self, notifications, main_layout):
+    @staticmethod
+    def get_notifications():
+        notifications = DB().Notifications.get_all()
         for notification in notifications:
             repo = notification['full_name']
             text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, notification['created_time'])
             if not(notification['user_login'] is None):
                 text_title = "{}, пользователь - {}.".format(text_title, notification['user_login'])
                 text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
-            label = QLabel(text_title)
-            label.setStyleSheet("font-size:12px;")
-            main_layout.addWidget(label)
-            if not(notification['message'] is None):
-                plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
-                plain_text.setReadOnly(True)
-                plain_text.setFixedSize(740, 75)
-                main_layout.addWidget(plain_text)
-            open_notification = self.open_url(notification['url'].replace('api/v1/repos/', ''))
-            number_issues = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
-            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'], number_issues))
-            button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
-                " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
-            button.clicked.connect(open_notification)
-            main_layout.addWidget(button)
+            notification['text_title'] = text_title
+            notification['number_issues'] = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
+        return notifications
 
     def create_window_notification(self):
-        notifications = DB().Notifications.get_all()
+        notifications = self.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
         if len(notifications) == 1:
@@ -186,7 +175,22 @@ class Notification:
         label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
         layout.addWidget(label)
         main_layout.addLayout(layout)
-        self.show_notifications(notifications, main_layout)
+        for notification in notifications:
+            label = QLabel(notification['text_title'])
+            label.setStyleSheet("font-size:12px;")
+            main_layout.addWidget(label)
+            if not(notification['message'] is None):
+                plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
+                plain_text.setReadOnly(True)
+                plain_text.setFixedSize(740, 75)
+                main_layout.addWidget(plain_text)
+            open_notification = self.open_url(notification['url'].replace('api/v1/repos/', ''))
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'], notification['number_issues']))
+            button.setStyleSheet(
+                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
+                " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+            button.clicked.connect(open_notification)
+            main_layout.addWidget(button)
         main_layout.addStretch()
         widget.setLayout(main_layout)
         self.notifications_scroll_area.setWidget(widget)
