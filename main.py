@@ -431,7 +431,7 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token = self.textEdit
         self.edit_server = self.textEdit_2
         self.edit_delay_notification = self.textEdit_3
-        
+
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
         renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)

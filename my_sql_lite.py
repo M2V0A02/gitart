@@ -38,7 +38,7 @@ class Users:
         self.conn = conn
         self.cur = self.conn.cursor()
         self.name_table = "Users"
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INT INCREMENT Primary KEY , full_name TEXT, login TEXT,
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INTEGER Primary KEY, full_name TEXT, login TEXT,
                     token TEXT, avatar_url text);""".format(self.name_table))
         self.conn.commit()
 
@@ -52,6 +52,10 @@ class Users:
         self.cur.execute("Select * From {}".format(self.name_table))
         return self.cur.fetchall()
 
+    def clear(self):
+        self.cur.execute("Delete From {}".format(self.name_table))
+        self.conn.commit()
+
 
 class Notifications:
     def __init__(self):
@@ -60,7 +64,7 @@ class Notifications:
         conn.row_factory = dict_factory
         self.name_table = "Notifications"
         self.cur.execute("""Create table IF NOT EXISTS {}
-                    (id INT INCREMENT PRIMARY KEY, message TEXT, user_login TEXT, full_name TEXT, created_time TEXT,
+                    (id INTEGER Primary KEY, message TEXT, user_login TEXT, full_name TEXT, created_time TEXT,
                      url TEXT)""".format(self.name_table))
         self.conn.commit()
 
