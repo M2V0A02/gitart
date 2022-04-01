@@ -428,6 +428,11 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
+        self.edit_token = self.textEdit
+        self.edit_server = self.textEdit_2
+        self.edit_delay_notification = self.textEdit_3
+        
+    def my_show(self):
         self.setFixedSize(self.width(), self.height())
         renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)
         renderer.setGeometry(self.label_4.geometry())
@@ -436,14 +441,9 @@ class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
         read_data = self.tray_icon.config.get_settings()
-        self.edit_token = self.textEdit
-        self.edit_server = self.textEdit_2
-        self.edit_delay_notification = self.textEdit_3
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
         self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
-
-    def my_show(self):
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
