@@ -33,6 +33,15 @@ def crash_script(error_type, value, tb):
     sys.__excepthook__(error_type, value, tb)
 
 
+def get_ending_by_number(number, possible_endings):
+    if number == 1:
+        return possible_endings[0]
+    elif 1 < number < 5:
+        return possible_endings[1]
+    else:
+        return possible_endings[2]
+
+
 class Notification:
 
     def __init__(self, api, tray):
@@ -91,16 +100,10 @@ class Notification:
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
         assigned_to_you_tasks = self.get_assigned_to_you_tasks()
-        if len(assigned_to_you_tasks) == 1:
-            ending_task = "а"
-            ending_assign = "а"
-        elif 1 < len(assigned_to_you_tasks) < 5:
-            ending_assign = "ы"
-            ending_task = "и"
-        else:
-            ending_assign = "о"
-            ending_task = ''
-        label = QLabel('Вам назначен{} - {} задач{}.'.format(ending_assign, len(assigned_to_you_tasks), ending_task))
+        label = QLabel('Вам назначен{} - {} задач{}.'.format(
+            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'ы', 'о']),
+            len(assigned_to_you_tasks),
+            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'и', ''])))
         label.setStyleSheet("font-size:24px;")
         button = QPushButton("Обновить")
         button.clicked.connect(self.create_window_tasks)
@@ -157,13 +160,9 @@ class Notification:
         notifications = self.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
-        if len(notifications) == 1:
-            ending = "ие"
-        elif 1 < len(notifications) < 5:
-            ending = "ия"
-        else:
-            ending = "ий"
-        label = QLabel("Не прочитано - {} сообщен{}.".format(len(notifications), ending))
+        label = QLabel("Не прочитано - {} сообщен{}.".format(
+            len(notifications),
+            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         label.setStyleSheet("font-size:24px;")
         main_layout.addWidget(label)
         layout = QHBoxLayout()
