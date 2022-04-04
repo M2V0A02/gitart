@@ -1,6 +1,6 @@
 import traceback
 import PyQt5.QtSvg
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
@@ -12,10 +12,10 @@ import logging
 import datetime
 import webbrowser
 import re
-import threading
 import UI.setting_ui as setting_ui
 import my_sql_lite
 from PyQt5.QtWinExtras import QtWin
+
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
 
@@ -26,9 +26,9 @@ def crash_script(error_type, value, tb):
 
     for frame_summary in traces:
         critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
-                                                                           frame_summary.lineno,
-                                                                           frame_summary.name, '',
-                                                                           frame_summary.line)
+                                                                                 frame_summary.lineno,
+                                                                                 frame_summary.name, '',
+                                                                                 frame_summary.line)
     logging.critical(critical_error)
     sys.__excepthook__(error_type, value, tb)
 
@@ -71,13 +71,13 @@ class Notification:
         DB().save_notifications(self.api)
         assigned_tasks = DB().AssignedTasks.get_all()
         for assigned_task in assigned_tasks:
-            assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50 \
+            assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
                 else assigned_task['title']
             assigned_task['task_id'] = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            assigned_task['body'] = "{}#{} открыта {} {}.".format(assigned_task['full_name'],
-                                                 assigned_task['task_id'], assigned_task['created_at'],
-                                                 assigned_task['creator'])
-            assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60 else assigned_task['body']
+            assigned_task['body'] = "{}#{} открыта {} {}.".format(assigned_task['full_name'], assigned_task['task_id'],
+                                                                  assigned_task['created_at'], assigned_task['creator'])
+            assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60\
+                else assigned_task['body']
             if not (assigned_task['milestone_title'] is None):
                 name_title = "Этап: {}".format(assigned_task['milestone_title'])
                 name_title = '{:.47}...'.format(name_title) if len(name_title) > 50 else name_title
@@ -125,9 +125,8 @@ class Notification:
             button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace("http://", '')))
             open_tasks = self.open_url(assigned_to_you['url'])
             button.clicked.connect(open_tasks)
-            button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
-                "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
+            button.setStyleSheet("font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
+                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
             layout.addWidget(button)
             layout_message.addWidget(div)
             y += 1
@@ -185,10 +184,11 @@ class Notification:
                 plain_text.setFixedSize(740, 75)
                 main_layout.addWidget(plain_text)
             open_notification = self.open_url(notification['url'].replace('api/v1/repos/', ''))
-            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'], notification['number_issues']))
+            button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'],
+                                                                    notification['number_issues']))
             button.setStyleSheet(
-                "font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:"
-                " .28571429rem; height: 20px; border-color: #dedede; text-align:right;")
+                """font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:
+                 .28571429rem; height: 20px; border-color: #dedede; text-align:right;""")
             button.clicked.connect(open_notification)
             main_layout.addWidget(button)
         main_layout.addStretch()
@@ -221,7 +221,7 @@ class DB:
         string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
         timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
         timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        string_date = string_date + datetime.timedelta(hours=timezone)
+        string_date = string_date+datetime.timedelta(hours=timezone)
         return string_date
 
     @staticmethod
@@ -242,9 +242,9 @@ class DB:
         for notification in notifications:
             message = ''
             if not (notification['subject']['latest_comment_url'] == ''):
-                    id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                    ['latest_comment_url']))[0].replace('comments/', '')
-                    message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+                id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
             user_login = ''
             if not (notification['subject']['url'] == ''):
                 repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0].\
@@ -295,7 +295,7 @@ class Api:
         layout = QVBoxLayout(dlg)
         label = QLabel("Адрес сервера:")
         layout.addWidget(label)
-        edit_server = QtWidgets.QTextEdit()
+        edit_server = QTextEdit()
         layout.addWidget(edit_server)
         button = QPushButton("Изменить сервер")
         layout.addWidget(button)
@@ -316,7 +316,8 @@ class Api:
             try:
                 requests.get("{}".format(self.__server))
                 if i > 0:
-                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение восстановлено', 'Соединение с сервером восстановлено')
+                    msg = QMessageBox(QMessageBox.NoIcon, 'Соединение восстановлено',
+                                      'Соединение с сервером восстановлено')
                     msg.exec()
                 break
             except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
@@ -356,7 +357,7 @@ class Api:
     def get_issues(self):
         self.check_connection_server()
         response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
-                                                                                                    self.__access_token))
+                                                                                                 self.__access_token))
         logging.debug("Получение задач")
         return response
 
@@ -369,7 +370,7 @@ class Api:
     def get_comment(self, comment):
         self.check_connection_server()
         response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
-                                                                                                            comment))
+                                                                                                      comment))
         logging.debug("Получение комментария")
         return response
 
@@ -422,7 +423,7 @@ class Config:
         return read_data
 
 
-class Setting(QtWidgets.QMainWindow, setting_ui.Ui_MainWindow):
+class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def __init__(self, tray_icon):
         self.tray_icon = tray_icon
@@ -571,7 +572,7 @@ class TrayIcon:
         if float(read_data.get('delay_notification', '')) < 0.001:
             self.config.save_settings({'delay_notification': '45'})
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '45')) * 1000))
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '45'))*1000))
 
     def constructor_menu(self):
         self.menu_items = []
