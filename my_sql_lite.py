@@ -90,4 +90,3 @@ class Notifications:
     def clear(self):
         self.cur.execute("DELETE FROM {}".format(self.name_table))
         self.conn.commit()
-Users()
