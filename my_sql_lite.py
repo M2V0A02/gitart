@@ -38,7 +38,6 @@ class Users:
         self.conn = conn
         self.cur = self.conn.cursor()
         self.name_table = "Users"
-        self.clear()
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INTEGER PRIMARY KEY, token TEXT, server TEXT, delay INT,
                          full_name TEXT, login TEXT, avatar_url TEXT);""".format(self.name_table))
         if self.get() is None:
