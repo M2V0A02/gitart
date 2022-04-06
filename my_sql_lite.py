@@ -38,8 +38,11 @@ class Users:
         self.conn = conn
         self.cur = self.conn.cursor()
         self.name_table = "Users"
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INTEGER PRIMARY KEY, token TEXT, server TEXT, delay TEXT,
+        self.clear()
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INTEGER PRIMARY KEY, token TEXT, server TEXT, delay INT,
                          full_name TEXT, login TEXT, avatar_url TEXT);""".format(self.name_table))
+        if self.get() is None:
+            self.save("null", "null", "null", "null", "null", 45)
         self.conn.commit()
 
     def save(self, full_name, login, token, avatar_url, server, delay):
@@ -88,3 +91,4 @@ class Notifications:
     def clear(self):
         self.cur.execute("DELETE FROM {}".format(self.name_table))
         self.conn.commit()
+Users()
