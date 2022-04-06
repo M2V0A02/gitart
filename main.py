@@ -418,7 +418,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         read_data = DB().Users.get()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
-        self.edit_delay_notification.setText(read_data.get('delay_notification', ''))
+        self.edit_delay_notification.setText(read_data.get('delay', ''))
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
@@ -438,6 +438,9 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
             self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.toPlainText()) > 0:
             DB().Users.update({'delay': self.edit_delay_notification.toPlainText()})
+            if self.tray_icon.timer_subscribe_notifications.isActive():
+                self.tray_icon.timer_subscribe_notifications.stop()
+                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.toPlainText()) * 1000))
         self.tray_icon.constructor_menu()
         self.hide()
 
@@ -476,7 +479,7 @@ class TrayIcon:
             exit()
         DB().Notifications.clear()
         DB().save_notifications(self.api)
-        if len(DB().Notifications.get_all()) != 0 and not(self.timer_animation.isActive()):
+        if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
             self.constructor_menu()
             self.timer_animation.start(2000)
 
@@ -490,8 +493,6 @@ class TrayIcon:
             out.write(resource.content)
 
     def animation(self):
-        if self.user_logged:
-            exit()
         if self.status_animation == 0:
             self.set_icon("img/{}.jpg".format(str(DB().Users.get()['id'])))
             self.status_animation = 1
@@ -536,7 +537,7 @@ class TrayIcon:
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
         read_data = DB().Users.get()
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay_notification', '45'))*1000))
+            self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
 
     def constructor_menu(self):
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon")
