@@ -1,5 +1,6 @@
 import traceback
 import PyQt5.QtSvg
+from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -418,7 +419,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         read_data = DB().Users.get()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
-        self.edit_delay_notification.setText(read_data.get('delay', ''))
+        self.edit_delay_notification.setText(str(read_data.get('delay', '')))
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
@@ -430,6 +431,8 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл")
+        self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
+        self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
         DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
                            'server': "'{}'".format(self.edit_server.toPlainText())})
         self.tray_icon.api.set_server(self.edit_server.toPlainText())
