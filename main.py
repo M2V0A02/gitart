@@ -1,5 +1,6 @@
 import traceback
 import PyQt5.QtSvg
+from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -75,7 +76,7 @@ class Notification:
         self.main_window.setWindowTitle("Gitart")
         self.window = QWidget()
         self.update_button = QPushButton()
-        icon = QIcon('img/logo.svg')
+        icon = QIcon('img/dart.png')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.api = api
@@ -304,9 +305,9 @@ class DB:
     def save_user(self, api):
         try:
             user_json = json.loads(api.get_user().text)
-            full_name = "'{}'".format(user_json.get('full_name', 'None'))
-            login = "'{}'".format(user_json.get('login', 'None'))
-            avatar_url = "'{}'".format(user_json.get('avatar_url', 'None'))
+            full_name = "'{}'".format(user_json.get('full_name', 'null'))
+            login = "'{}'".format(user_json.get('login', 'null'))
+            avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
             self.Users.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
         except:
             logging.error("Ошибка с получение пользователя.")
@@ -314,12 +315,12 @@ class DB:
 
 class Api:
 
-    def __init__(self, server, access_token, tray):
+    def __init__(self, tray):
         logging.debug("Создание экземляра класса - Api")
         self.there_connection = True
-        self.__server = server
+        self.__server = DB().Users.get()['server']
         self.tray = tray
-        self.__access_token = access_token
+        self.__access_token = DB().Users.get()['token']
 
     def connection_server(self):
         try:
@@ -336,13 +337,12 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get("{}".format(self.__server), verify=False, timeout=1)
+            r = requests.get("{}".format(self.__server), verify=False, timeout=0.1)
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             self.there_connection = False
             self.tray.tray.setIcon(icon)
-            self.tray.window_notification.main_window.hide()
             self.tray.constructor_menu()
             self.timer_connection_server = QtCore.QTimer()
             self.timer_connection_server.timeout.connect(self.connection_server)
@@ -380,9 +380,9 @@ class Api:
         logging.debug("Обращение к Api для получение информацию о своей учетной записи")
         return response
 
-    def set_access_token(self, access_token):
+    def update_access_token(self):
         logging.debug("Перезапись токена доступа")
-        self.__access_token = access_token
+        self.__access_token = DB().Users.get()['token']
 
     @property
     def get_access_token(self):
@@ -392,7 +392,8 @@ class Api:
     def get_server(self):
         return self.__server
 
-    def set_server(self, server):
+    def update_server(self):
+        server = DB().Users.get()['server']
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
@@ -418,7 +419,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         read_data = DB().Users.get()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
-        self.edit_delay_notification.setText(read_data.get('delay', ''))
+        self.edit_delay_notification.setText(str(read_data.get('delay', '')))
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
@@ -430,10 +431,14 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл")
+        self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
+        self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
+        if not self.tray_icon.user_logged:
+            self.edit_token.setText(DB().Users.get()['token'])
         DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
                            'server': "'{}'".format(self.edit_server.toPlainText())})
-        self.tray_icon.api.set_server(self.edit_server.toPlainText())
-        self.tray_icon.api.set_access_token(self.edit_token.toPlainText())
+        self.tray_icon.api.update_server()
+        self.tray_icon.api.update_access_token()
         if not self.edit_delay_notification.toPlainText().isdigit():
             self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.toPlainText()) > 0:
@@ -464,8 +469,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        read_data = DB().Users.get()
-        self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
+        self.api = Api(self)
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
@@ -474,9 +478,6 @@ class TrayIcon:
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
-        if self.user_logged:
-            logging.debug("Закончить проверку новых сообщений")
-            exit()
         DB().Notifications.clear()
         DB().save_notifications(self.api)
         if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
@@ -549,7 +550,7 @@ class TrayIcon:
             DB().save_user(self.api)
         self.menu_items = []
         self.menu = QMenu()
-        if self.api.there_connection and not(DB().Users.get()['full_name'] == 'None'):
+        if self.api.there_connection and not DB().Users.get()['full_name'] == 'null':
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
@@ -574,7 +575,8 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
-        DB().Users.update({'token': ''})
+        DB().Users.update({'token': 'null'})
+        self.api.update_access_token()
         self.set_icon('img/dart.png')
         self.user_logged = True
         self.constructor_menu()
