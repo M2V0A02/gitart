@@ -434,9 +434,8 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         logging.debug("Передача новых настроек в конфигурационный файл")
         self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
         self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
-        if self.tray_icon.user_logged:
+        if not self.tray_icon.user_logged:
             self.edit_token.setText(DB().Users.get()['token'])
-
         DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
                            'server': "'{}'".format(self.edit_server.toPlainText())})
         self.tray_icon.api.update_server()
@@ -555,7 +554,7 @@ class TrayIcon:
             DB().save_user(self.api)
         self.menu_items = []
         self.menu = QMenu()
-        if self.api.there_connection and not(DB().Users.get()['full_name'] == 'null'):
+        if self.api.there_connection and not DB().Users.get()['full_name'] == 'null':
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
@@ -581,6 +580,7 @@ class TrayIcon:
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
         DB().Users.update({'token': 'null'})
+        self.api.update_access_token()
         self.set_icon('img/dart.png')
         self.user_logged = True
         self.constructor_menu()
