@@ -337,13 +337,12 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get("{}".format(self.__server), verify=False, timeout=1)
+            r = requests.get("{}".format(self.__server), verify=False, timeout=0.1)
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             self.there_connection = False
             self.tray.tray.setIcon(icon)
-            self.tray.window_notification.main_window.hide()
             self.tray.constructor_menu()
             self.timer_connection_server = QtCore.QTimer()
             self.timer_connection_server.timeout.connect(self.connection_server)
@@ -479,9 +478,6 @@ class TrayIcon:
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
-        if self.user_logged:
-            logging.debug("Закончить проверку новых сообщений")
-            exit()
         DB().Notifications.clear()
         DB().save_notifications(self.api)
         if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
