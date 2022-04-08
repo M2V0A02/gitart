@@ -76,7 +76,7 @@ class Notification:
         self.main_window.setWindowTitle("Gitart")
         self.window = QWidget()
         self.update_button = QPushButton()
-        icon = QIcon('img/logo.svg')
+        icon = QIcon('img/dart.png')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
         self.api = api
