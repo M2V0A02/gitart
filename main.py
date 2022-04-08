@@ -305,9 +305,9 @@ class DB:
     def save_user(self, api):
         try:
             user_json = json.loads(api.get_user().text)
-            full_name = "'{}'".format(user_json.get('full_name', 'None'))
-            login = "'{}'".format(user_json.get('login', 'None'))
-            avatar_url = "'{}'".format(user_json.get('avatar_url', 'None'))
+            full_name = "'{}'".format(user_json.get('full_name', 'null'))
+            login = "'{}'".format(user_json.get('login', 'null'))
+            avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
             self.Users.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
         except:
             logging.error("Ошибка с получение пользователя.")
@@ -315,12 +315,12 @@ class DB:
 
 class Api:
 
-    def __init__(self, server, access_token, tray):
+    def __init__(self, tray):
         logging.debug("Создание экземляра класса - Api")
         self.there_connection = True
-        self.__server = server
+        self.__server = DB().Users.get()['server']
         self.tray = tray
-        self.__access_token = access_token
+        self.__access_token = DB().Users.get()['token']
 
     def connection_server(self):
         try:
@@ -381,9 +381,9 @@ class Api:
         logging.debug("Обращение к Api для получение информацию о своей учетной записи")
         return response
 
-    def set_access_token(self, access_token):
+    def update_access_token(self):
         logging.debug("Перезапись токена доступа")
-        self.__access_token = access_token
+        self.__access_token = DB().Users.get()['token']
 
     @property
     def get_access_token(self):
@@ -393,7 +393,8 @@ class Api:
     def get_server(self):
         return self.__server
 
-    def set_server(self, server):
+    def update_server(self):
+        server = DB().Users.get()['server']
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
@@ -433,10 +434,13 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         logging.debug("Передача новых настроек в конфигурационный файл")
         self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
         self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
+        if self.tray_icon.user_logged:
+            self.edit_token.setText(DB().Users.get()['token'])
+
         DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
                            'server': "'{}'".format(self.edit_server.toPlainText())})
-        self.tray_icon.api.set_server(self.edit_server.toPlainText())
-        self.tray_icon.api.set_access_token(self.edit_token.toPlainText())
+        self.tray_icon.api.update_server()
+        self.tray_icon.api.update_access_token()
         if not self.edit_delay_notification.toPlainText().isdigit():
             self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.toPlainText()) > 0:
@@ -467,8 +471,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        read_data = DB().Users.get()
-        self.api = Api(read_data.get('server', ''), read_data.get('token', ''), self)
+        self.api = Api(self)
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
@@ -552,7 +555,7 @@ class TrayIcon:
             DB().save_user(self.api)
         self.menu_items = []
         self.menu = QMenu()
-        if self.api.there_connection and not(DB().Users.get()['full_name'] == 'None'):
+        if self.api.there_connection and not(DB().Users.get()['full_name'] == 'null'):
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
@@ -577,7 +580,7 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
-        DB().Users.update({'token': ''})
+        DB().Users.update({'token': 'null'})
         self.set_icon('img/dart.png')
         self.user_logged = True
         self.constructor_menu()
