@@ -1,11 +1,10 @@
 import traceback
 import PyQt5.QtSvg
-from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
-import yaml
+from PyQt5 import QtGui
 import requests
 import json
 import os
@@ -261,46 +260,40 @@ class DB:
         return list(filter(filter_tasks, all_tasks))
 
     def save_notifications(self, api):
-        try:
-            self.Notifications.clear()
-            notifications = json.loads(api.get_notifications().text)
-            for notification in notifications:
-                message = ''
-                if not (notification['subject']['latest_comment_url'] == ''):
-                    id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                    ['latest_comment_url']))[0].replace('comments/', '')
-                    message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
-                user_login = ''
-                if not (notification['subject']['url'] == ''):
-                    repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0].\
-                        replace('repos/', '').replace('/issues', '')
-                    issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
-                    user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
-                full_name = "'{}'".format(notification['repository']['full_name'])
-                created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
-                url = "'{}'".format(notification['subject']['url'])
-                self.Notifications.save(message, user_login, full_name, created_time, url)
-        except:
-            logging.error('Получение непрочитанных сообщений')
+        self.Notifications.clear()
+        notifications = json.loads(api.get_notifications().text)
+        for notification in notifications:
+            message = 'null'
+            if not (notification['subject']['latest_comment_url'] == ''):
+                id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+            user_login = 'null'
+            if not (notification['subject']['url'] == ''):
+                repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
+                    replace('repos/', '').replace('/issues', '')
+                issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
+                user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+            full_name = "'{}'".format(notification['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
+            url = "'{}'".format(notification['subject']['url'])
+            self.Notifications.save(message, user_login, full_name, created_time, url)
 
     def save_assigned_tasks(self, api):
-        try:
-            self.AssignedTasks.clear()
-            all_tasks = json.loads(api.get_issues().text)
-            assigned_tasks = self.get_assigned_to_you(all_tasks, api)
-            for assigned_task in assigned_tasks:
-                title = "'{}'".format(assigned_task['title'])
-                task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-                full_name = "'{}'".format(assigned_task['repository']['full_name'])
-                created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
-                creator = "'{}'".format(assigned_task['user']['login'])
-                url = "'{}'".format(assigned_task['html_url'])
-                milestone_title = "''"
-                if not (assigned_task['milestone'] is None):
-                    milestone_title = "'{}'".format(assigned_task['milestone']['title'])
-                self.AssignedTasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
-        except:
-            logging.error('ошибка с получение назначенных задач')
+        self.AssignedTasks.clear()
+        all_tasks = json.loads(api.get_issues().text)
+        assigned_tasks = self.get_assigned_to_you(all_tasks, api)
+        for assigned_task in assigned_tasks:
+            title = "'{}'".format(assigned_task['title'])
+            task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
+            full_name = "'{}'".format(assigned_task['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
+            creator = "'{}'".format(assigned_task['user']['login'])
+            url = "'{}'".format(assigned_task['html_url'])
+            milestone_title = "''"
+            if not (assigned_task['milestone'] is None):
+                milestone_title = "'{}'".format(assigned_task['milestone']['title'])
+            self.AssignedTasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
     def save_user(self, api):
         try:
@@ -337,9 +330,10 @@ class Api:
 
     def check_connection_server(self):
         try:
-            r = requests.get("{}".format(self.__server), verify=False, timeout=0.1)
+            r = requests.get("{}".format(self.__server), verify=False, timeout=1)
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
-               requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
+               requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
+               requests.exceptions.ReadTimeout):
             icon = QIcon('img/connection_lost.png')
             self.there_connection = False
             self.tray.tray.setIcon(icon)
@@ -404,15 +398,13 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
-        self.edit_token = self.textEdit
-        self.edit_server = self.textEdit_2
-        self.edit_delay_notification = self.textEdit_3
+        self.edit_token = self.lineEdit
+        self.edit_server = self.lineEdit_2
+        self.edit_delay_notification = self.lineEdit_3
 
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
-        renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)
-        renderer.setGeometry(self.label_4.geometry())
-        renderer.show()
+        self.label_4.setPixmap(QtGui.QPixmap("img/dart.png"))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
@@ -431,21 +423,21 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл")
-        self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
-        self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
+        self.edit_token.setText(self.edit_token.text())
+        self.edit_server.setText(self.edit_server.text())
         if not self.tray_icon.user_logged:
             self.edit_token.setText(DB().Users.get()['token'])
-        DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
-                           'server': "'{}'".format(self.edit_server.toPlainText())})
+        DB().Users.update({'token': "'{}'".format(self.edit_token.text()),
+                           'server': "'{}'".format(self.edit_server.text())})
         self.tray_icon.api.update_server()
         self.tray_icon.api.update_access_token()
-        if not self.edit_delay_notification.toPlainText().isdigit():
+        if not self.edit_delay_notification.text().isdigit():
             self.edit_delay_notification.setText('45')
-        if float(self.edit_delay_notification.toPlainText()) > 0:
-            DB().Users.update({'delay': self.edit_delay_notification.toPlainText()})
+        if float(self.edit_delay_notification.text()) > 0:
+            DB().Users.update({'delay': self.edit_delay_notification.text()})
             if self.tray_icon.timer_subscribe_notifications.isActive():
                 self.tray_icon.timer_subscribe_notifications.stop()
-                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.toPlainText()) * 1000))
+                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.text()) * 1000))
         self.tray_icon.constructor_menu()
         self.hide()
 
@@ -502,9 +494,7 @@ class TrayIcon:
             self.status_animation = 0
 
     def show_notification(self):
-        if len(DB().Notifications.get_all()) == 0:
-            self.tray.setToolTip('Новых сообщений нет')
-        else:
+        if not len(DB().Notifications.get_all()) == 0:
             self.window_notification.create_window_notification()
             self.window_notification.show()
 
@@ -550,11 +540,11 @@ class TrayIcon:
             DB().save_user(self.api)
         self.menu_items = []
         self.menu = QMenu()
+        self.tray.setToolTip("Необходима авторизация через токен")
         if self.api.there_connection and not DB().Users.get()['full_name'] == 'null':
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
-        self.tray.setToolTip("Необходима авторизация через токен")
         auth = QAction("Настройки")
         def_setting = self.create_settings_window
         auth.triggered.connect(def_setting)
@@ -589,10 +579,10 @@ def main():
     sys.excepthook = crash_script
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
-    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
-                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     if not (os.path.exists('logs')):
         os.mkdir('logs')
+    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
+                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
