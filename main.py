@@ -496,9 +496,7 @@ class TrayIcon:
             self.status_animation = 0
 
     def show_notification(self):
-        if len(DB().Notifications.get_all()) == 0:
-            self.tray.setToolTip('Новых сообщений нет')
-        else:
+        if not len(DB().Notifications.get_all()) == 0:
             self.window_notification.create_window_notification()
             self.window_notification.show()
 
@@ -544,11 +542,11 @@ class TrayIcon:
             DB().save_user(self.api)
         self.menu_items = []
         self.menu = QMenu()
+        self.tray.setToolTip("Необходима авторизация через токен")
         if self.api.there_connection and not DB().Users.get()['full_name'] == 'null':
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
-        self.tray.setToolTip("Необходима авторизация через токен")
         auth = QAction("Настройки")
         def_setting = self.create_settings_window
         auth.triggered.connect(def_setting)
