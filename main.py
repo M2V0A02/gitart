@@ -261,46 +261,40 @@ class DB:
         return list(filter(filter_tasks, all_tasks))
 
     def save_notifications(self, api):
-        try:
-            self.Notifications.clear()
-            notifications = json.loads(api.get_notifications().text)
-            for notification in notifications:
-                message = ''
-                if not (notification['subject']['latest_comment_url'] == ''):
-                    id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                    ['latest_comment_url']))[0].replace('comments/', '')
-                    message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
-                user_login = ''
-                if not (notification['subject']['url'] == ''):
-                    repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0].\
-                        replace('repos/', '').replace('/issues', '')
-                    issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
-                    user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
-                full_name = "'{}'".format(notification['repository']['full_name'])
-                created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
-                url = "'{}'".format(notification['subject']['url'])
-                self.Notifications.save(message, user_login, full_name, created_time, url)
-        except:
-            logging.error('Получение непрочитанных сообщений')
+        self.Notifications.clear()
+        notifications = json.loads(api.get_notifications().text)
+        for notification in notifications:
+            message = 'null'
+            if not (notification['subject']['latest_comment_url'] == ''):
+                id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+            user_login = 'null'
+            if not (notification['subject']['url'] == ''):
+                repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
+                    replace('repos/', '').replace('/issues', '')
+                issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
+                user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+            full_name = "'{}'".format(notification['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
+            url = "'{}'".format(notification['subject']['url'])
+            self.Notifications.save(message, user_login, full_name, created_time, url)
 
     def save_assigned_tasks(self, api):
-        try:
-            self.AssignedTasks.clear()
-            all_tasks = json.loads(api.get_issues().text)
-            assigned_tasks = self.get_assigned_to_you(all_tasks, api)
-            for assigned_task in assigned_tasks:
-                title = "'{}'".format(assigned_task['title'])
-                task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-                full_name = "'{}'".format(assigned_task['repository']['full_name'])
-                created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
-                creator = "'{}'".format(assigned_task['user']['login'])
-                url = "'{}'".format(assigned_task['html_url'])
-                milestone_title = "''"
-                if not (assigned_task['milestone'] is None):
-                    milestone_title = "'{}'".format(assigned_task['milestone']['title'])
-                self.AssignedTasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
-        except:
-            logging.error('ошибка с получение назначенных задач')
+        self.AssignedTasks.clear()
+        all_tasks = json.loads(api.get_issues().text)
+        assigned_tasks = self.get_assigned_to_you(all_tasks, api)
+        for assigned_task in assigned_tasks:
+            title = "'{}'".format(assigned_task['title'])
+            task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
+            full_name = "'{}'".format(assigned_task['repository']['full_name'])
+            created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
+            creator = "'{}'".format(assigned_task['user']['login'])
+            url = "'{}'".format(assigned_task['html_url'])
+            milestone_title = "''"
+            if not (assigned_task['milestone'] is None):
+                milestone_title = "'{}'".format(assigned_task['milestone']['title'])
+            self.AssignedTasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
     def save_user(self, api):
         try:
