@@ -1,11 +1,10 @@
 import traceback
 import PyQt5.QtSvg
-from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 import sys
-import yaml
+from PyQt5 import QtGui
 import requests
 import json
 import os
@@ -331,9 +330,10 @@ class Api:
 
     def check_connection_server(self):
         try:
-            r = requests.get("{}".format(self.__server), verify=False, timeout=0.1)
+            r = requests.get("{}".format(self.__server), verify=False, timeout=1)
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
-               requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
+               requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
+               requests.exceptions.ReadTimeout):
             icon = QIcon('img/connection_lost.png')
             self.there_connection = False
             self.tray.tray.setIcon(icon)
@@ -398,15 +398,13 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.tray_icon = tray_icon
         super().__init__()
         self.setupUi(self)
-        self.edit_token = self.textEdit
-        self.edit_server = self.textEdit_2
-        self.edit_delay_notification = self.textEdit_3
+        self.edit_token = self.lineEdit
+        self.edit_server = self.lineEdit_2
+        self.edit_delay_notification = self.lineEdit_3
 
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
-        renderer = PyQt5.QtSvg.QSvgWidget("img/logo.svg", self.centralwidget)
-        renderer.setGeometry(self.label_4.geometry())
-        renderer.show()
+        self.label_4.setPixmap(QtGui.QPixmap("img/dart.png"))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
@@ -425,21 +423,21 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def save_settings(self):
         logging.debug("Передача новых настроек в конфигурационный файл")
-        self.edit_token.setText(self.edit_token.toPlainText().replace("\n", ""))
-        self.edit_server.setText(self.edit_server.toPlainText().replace("\n", ""))
+        self.edit_token.setText(self.edit_token.text())
+        self.edit_server.setText(self.edit_server.text())
         if not self.tray_icon.user_logged:
             self.edit_token.setText(DB().Users.get()['token'])
-        DB().Users.update({'token': "'{}'".format(self.edit_token.toPlainText()),
-                           'server': "'{}'".format(self.edit_server.toPlainText())})
+        DB().Users.update({'token': "'{}'".format(self.edit_token.text()),
+                           'server': "'{}'".format(self.edit_server.text())})
         self.tray_icon.api.update_server()
         self.tray_icon.api.update_access_token()
-        if not self.edit_delay_notification.toPlainText().isdigit():
+        if not self.edit_delay_notification.text().isdigit():
             self.edit_delay_notification.setText('45')
-        if float(self.edit_delay_notification.toPlainText()) > 0:
-            DB().Users.update({'delay': self.edit_delay_notification.toPlainText()})
+        if float(self.edit_delay_notification.text()) > 0:
+            DB().Users.update({'delay': self.edit_delay_notification.text()})
             if self.tray_icon.timer_subscribe_notifications.isActive():
                 self.tray_icon.timer_subscribe_notifications.stop()
-                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.toPlainText()) * 1000))
+                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.text()) * 1000))
         self.tray_icon.constructor_menu()
         self.hide()
 
