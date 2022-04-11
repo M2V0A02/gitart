@@ -589,10 +589,10 @@ def main():
     sys.excepthook = crash_script
     current_date = datetime.datetime.today().strftime('%d-%m-%Y')
     format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
-    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
-                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     if not (os.path.exists('logs')):
         os.mkdir('logs')
+    logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
+                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/logo.svg'))
