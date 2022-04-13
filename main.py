@@ -1,5 +1,4 @@
 import traceback
-import PyQt5.QtSvg
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -248,7 +247,10 @@ class DB:
 
     @staticmethod
     def get_assigned_to_you(all_tasks, api):
-        user = json.loads(api.get_user().text)
+        try:
+            user = json.loads(api.get_user().text)
+        except json.decoder.JSONDecodeError:
+            return []
         # убираю из списка задач мои, чтобы остались только назначенные.
 
         def filter_tasks(assigned_to_you_tasks):
@@ -261,19 +263,28 @@ class DB:
 
     def save_notifications(self, api):
         self.Notifications.clear()
-        notifications = json.loads(api.get_notifications().text)
+        try:
+            notifications = json.loads(api.get_notifications().text)
+        except json.decoder.JSONDecodeError:
+            notifications = []
         for notification in notifications:
             message = 'null'
             if not (notification['subject']['latest_comment_url'] == ''):
                 id_comments = re.search(r'comments/\d+', format(notification['subject']
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
-                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+                try:
+                    message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+                except json.decoder.JSONDecodeError:
+                    message = 'null'
             user_login = 'null'
             if not (notification['subject']['url'] == ''):
                 repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
                     replace('repos/', '').replace('/issues', '')
                 issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
-                user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+                try:
+                    user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+                except json.decoder.JSONDecodeError:
+                    user_login = 'null'
             full_name = "'{}'".format(notification['repository']['full_name'])
             created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
             url = "'{}'".format(notification['subject']['url'])
@@ -281,8 +292,11 @@ class DB:
 
     def save_assigned_tasks(self, api):
         self.AssignedTasks.clear()
-        all_tasks = json.loads(api.get_issues().text)
-        assigned_tasks = self.get_assigned_to_you(all_tasks, api)
+        try:
+            all_tasks = json.loads(api.get_issues().text)
+            assigned_tasks = self.get_assigned_to_you(all_tasks, api)
+        except json.decoder.JSONDecodeError:
+            assigned_tasks = []
         for assigned_task in assigned_tasks:
             title = "'{}'".format(assigned_task['title'])
             task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
@@ -298,12 +312,12 @@ class DB:
     def save_user(self, api):
         try:
             user_json = json.loads(api.get_user().text)
-            full_name = "'{}'".format(user_json.get('full_name', 'null'))
-            login = "'{}'".format(user_json.get('login', 'null'))
-            avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
-            self.Users.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
-        except:
-            logging.error("Ошибка с получение пользователя.")
+        except json.decoder.JSONDecodeError:
+            user_json = {'full_name': 'null', 'login': 'null', 'avatar_url': 'null'}
+        full_name = "'{}'".format(user_json.get('full_name', 'null'))
+        login = "'{}'".format(user_json.get('login', 'null'))
+        avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
+        self.Users.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
 
 
 class Api:
@@ -565,6 +579,7 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
+        self.window_notification.main_window.close()
         DB().Users.update({'token': 'null'})
         self.api.update_access_token()
         self.set_icon('img/dart.png')
