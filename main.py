@@ -249,7 +249,7 @@ class DB:
     def get_assigned_to_you(all_tasks, api):
         try:
             user = json.loads(api.get_user().text)
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, AttributeError):
             return []
         # убираю из списка задач мои, чтобы остались только назначенные.
 
@@ -265,7 +265,7 @@ class DB:
         self.Notifications.clear()
         try:
             notifications = json.loads(api.get_notifications().text)
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, AttributeError):
             notifications = []
         for notification in notifications:
             message = 'null'
@@ -274,7 +274,7 @@ class DB:
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
                 try:
                     message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
-                except json.decoder.JSONDecodeError:
+                except (json.decoder.JSONDecodeError, AttributeError):
                     message = 'null'
             user_login = 'null'
             if not (notification['subject']['url'] == ''):
@@ -283,7 +283,7 @@ class DB:
                 issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
                 try:
                     user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
-                except json.decoder.JSONDecodeError:
+                except (json.decoder.JSONDecodeError, AttributeError):
                     user_login = 'null'
             full_name = "'{}'".format(notification['repository']['full_name'])
             created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
@@ -295,7 +295,7 @@ class DB:
         try:
             all_tasks = json.loads(api.get_issues().text)
             assigned_tasks = self.get_assigned_to_you(all_tasks, api)
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, AttributeError):
             assigned_tasks = []
         for assigned_task in assigned_tasks:
             title = "'{}'".format(assigned_task['title'])
@@ -312,7 +312,7 @@ class DB:
     def save_user(self, api):
         try:
             user_json = json.loads(api.get_user().text)
-        except json.decoder.JSONDecodeError:
+        except (json.decoder.JSONDecodeError, AttributeError):
             user_json = {'full_name': 'null', 'login': 'null', 'avatar_url': 'null'}
         full_name = "'{}'".format(user_json.get('full_name', 'null'))
         login = "'{}'".format(user_json.get('login', 'null'))
@@ -339,12 +339,14 @@ class Api:
             self.tray.constructor_menu()
             self.timer_connection_server.stop()
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
-                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema):
+               requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
+               requests.exceptions.ReadTimeout):
             logging.debug("Попытка соединение с сервером.")
 
     def check_connection_server(self):
         try:
-            r = requests.get("{}".format(self.__server), verify=False, timeout=1)
+            requests.get("{}".format(self.__server), verify=False, timeout=1)
+            return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout):
@@ -352,41 +354,45 @@ class Api:
             self.there_connection = False
             self.tray.tray.setIcon(icon)
             self.tray.constructor_menu()
+            self.tray.window_notification.main_window.hide()
+            if self.tray.timer_animation.isActive():
+                self.tray.timer_animation.stop()
             self.timer_connection_server = QtCore.QTimer()
             self.timer_connection_server.timeout.connect(self.connection_server)
             self.timer_connection_server.start(2500)
+            return False
 
     def get_notifications(self):
-        self.check_connection_server()
-        response = requests.get("{}/api/v1/notifications?access_token={}".format(self.__server, self.__access_token))
-        logging.debug("Получение новых сообщений")
-        return response
+        if self.check_connection_server():
+            response = requests.get("{}/api/v1/notifications?access_token={}".format(self.__server, self.__access_token))
+            logging.debug("Получение новых сообщений")
+            return response
 
     def get_issues(self):
-        self.check_connection_server()
-        response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
-                                                                                                 self.__access_token))
-        logging.debug("Получение задач")
-        return response
+        if self.check_connection_server():
+            response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
+                                                                                                     self.__access_token))
+            logging.debug("Получение задач")
+            return response
 
     def get_repos_issues(self, repo, issues):
-        self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.__server, repo, issues))
-        logging.debug("Получение информации о задачи в репозитории")
-        return response
+        if self.check_connection_server():
+            response = requests.get("{}/api/v1/repos/{}/issues/{}".format(self.__server, repo, issues))
+            logging.debug("Получение информации о задачи в репозитории")
+            return response
 
     def get_comment(self, comment):
-        self.check_connection_server()
-        response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
-                                                                                                      comment))
-        logging.debug("Получение комментария")
-        return response
+        if self.check_connection_server():
+            response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
+                                                                                                          comment))
+            logging.debug("Получение комментария")
+            return response
 
     def get_user(self):
-        self.check_connection_server()
-        response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
-        logging.debug("Обращение к Api для получение информацию о своей учетной записи")
-        return response
+        if self.check_connection_server():
+            response = requests.get("{}/api/v1/user?access_token={}".format(self.__server, self.__access_token))
+            logging.debug("Обращение к Api для получение информацию о своей учетной записи")
+            return response
 
     def update_access_token(self):
         logging.debug("Перезапись токена доступа")
