@@ -97,8 +97,6 @@ class Notification:
         controller[number_tab]
 
     def get_assigned_to_you_tasks(self):
-        DB().Notifications.clear()
-        DB().save_notifications(self.api)
         assigned_tasks = DB().AssignedTasks.get_all()
         for assigned_task in assigned_tasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
@@ -115,8 +113,6 @@ class Notification:
         return assigned_tasks
 
     def create_window_tasks(self):
-        DB().AssignedTasks.clear()
-        DB().save_assigned_tasks(self.api)
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
@@ -494,6 +490,8 @@ class TrayIcon:
         logging.debug("Проверка новых сообщений")
         DB().Notifications.clear()
         DB().save_notifications(self.api)
+        DB().AssignedTasks.clear()
+        DB().save_assigned_tasks(self.api)
         if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
             self.constructor_menu()
             self.timer_animation.start(2000)
