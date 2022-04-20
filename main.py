@@ -45,7 +45,6 @@ def create_window_change_server():
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
-
     for frame_summary in traces:
         critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
                                                                                  frame_summary.lineno,
@@ -98,8 +97,6 @@ class Notification:
         controller[number_tab]
 
     def get_assigned_to_you_tasks(self):
-        DB().Notifications.clear()
-        DB().save_notifications(self.api)
         assigned_tasks = DB().AssignedTasks.get_all()
         for assigned_task in assigned_tasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
@@ -116,8 +113,6 @@ class Notification:
         return assigned_tasks
 
     def create_window_tasks(self):
-        DB().AssignedTasks.clear()
-        DB().save_assigned_tasks(self.api)
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QHBoxLayout()
@@ -239,10 +234,13 @@ class DB:
 
     @staticmethod
     def formatting_the_date(string_date):
-        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        try:
+            string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        except ValueError:
+            return ''
         timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
         timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        string_date = string_date+datetime.timedelta(hours=timezone)
+        string_date = string_date + datetime.timedelta(hours=timezone)
         return string_date
 
     @staticmethod
@@ -332,6 +330,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
+            self.tray.tray.showMessage('Уведомление', "Соединение восстановлено", QIcon('img/dart.png'))
             self.tray.set_icon('img/dart.png')
             self.tray.constructor_menu()
             self.there_connection = True
@@ -351,6 +350,7 @@ class Api:
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout):
             icon = QIcon('img/connection_lost.png')
+            self.tray.tray.showMessage('Ошибка', "Соединение потеряно", QIcon('img/connection_lost.png'))
             self.there_connection = False
             self.tray.tray.setIcon(icon)
             self.tray.constructor_menu()
@@ -492,6 +492,8 @@ class TrayIcon:
         logging.debug("Проверка новых сообщений")
         DB().Notifications.clear()
         DB().save_notifications(self.api)
+        DB().AssignedTasks.clear()
+        DB().save_assigned_tasks(self.api)
         if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
             self.constructor_menu()
             self.timer_animation.start(2000)
@@ -606,7 +608,7 @@ def main():
                         level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('./img/logo.svg'))
+    app.setWindowIcon(QIcon('./img/dart.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
