@@ -238,10 +238,13 @@ class DB:
 
     @staticmethod
     def formatting_the_date(string_date):
-        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        try:
+            string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        except ValueError:
+            return ''
         timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
         timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        string_date = string_date+datetime.timedelta(hours=timezone)
+        string_date = string_date + datetime.timedelta(hours=timezone)
         return string_date
 
     @staticmethod
