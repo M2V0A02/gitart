@@ -606,7 +606,7 @@ def main():
                         level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('./img/logo.svg'))
+    app.setWindowIcon(QIcon('./img/dart.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
