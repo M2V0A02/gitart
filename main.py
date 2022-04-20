@@ -45,7 +45,6 @@ def create_window_change_server():
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
     critical_error = "{}: {},  \n".format(error_type, value)
-
     for frame_summary in traces:
         critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
                                                                                  frame_summary.lineno,
