@@ -17,6 +17,80 @@ from PyQt5.QtWinExtras import QtWin
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
+table_notifications = my_sql_lite.Notifications('api.db')
+table_assigned_tasks = my_sql_lite.AssignedTasks('api.db')
+table_users = my_sql_lite.Users('api.db')
+
+
+@staticmethod
+def formatting_the_date(string_date):
+    try:
+        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+    except ValueError:
+        return ''
+    timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
+    timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
+    string_date = string_date + datetime.timedelta(hours=timezone)
+    return string_date
+
+
+@staticmethod
+def get_assigned_to_you(all_tasks, user):
+
+    def filter_tasks(assigned_to_you_tasks):
+        if not (assigned_to_you_tasks['assignees'] is None):
+            for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
+                if assigned_to_you_task['login'] == user['login']:
+                    return True
+        return False
+    return list(filter(filter_tasks, all_tasks))
+
+
+def save_notifications(api, notifications, table):
+    for notification in notifications:
+        message = 'null'
+        if not (notification['subject']['latest_comment_url'] == ''):
+            id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                            ['latest_comment_url']))[0].replace('comments/', '')
+            try:
+                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
+            except (json.decoder.JSONDecodeError, AttributeError):
+                message = 'null'
+        user_login = 'null'
+        if not (notification['subject']['url'] == ''):
+            repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
+                replace('repos/', '').replace('/issues', '')
+            issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
+            try:
+                user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+            except (json.decoder.JSONDecodeError, AttributeError):
+                user_login = 'null'
+        full_name = "'{}'".format(notification['repository']['full_name'])
+        created_time = "'{}'".format(formatting_the_date(notification['repository']['owner']['created']))
+        url = "'{}'".format(notification['subject']['url'])
+        table.save(message, user_login, full_name, created_time, url)
+
+
+def save_assigned_tasks(api, assigned_tasks, table):
+    assigned_to_you_tasks = get_assigned_to_you(assigned_tasks, json.loads(api.get_user().text))
+    for assigned_to_you_task in assigned_to_you_tasks:
+        title = "'{}'".format(assigned_to_you_task['title'])
+        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
+        full_name = "'{}'".format(assigned_to_you_task['repository']['full_name'])
+        created_time = "'{}'".format(formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y'))
+        creator = "'{}'".format(assigned_to_you_task['user']['login'])
+        url = "'{}'".format(assigned_to_you_task['html_url'])
+        milestone_title = "''"
+        if not (assigned_to_you_task['milestone'] is None):
+            milestone_title = "'{}'".format(assigned_to_you_task['milestone']['title'])
+        table.save(task_id, title, full_name, created_time, creator, url, milestone_title)
+
+
+def update_user(user_json, table):
+    full_name = "'{}'".format(user_json.get('full_name', 'null'))
+    login = "'{}'".format(user_json.get('login', 'null'))
+    avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
+    table.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
 
 
 def create_window_change_server():
@@ -34,7 +108,7 @@ def create_window_change_server():
     def change_server(dialog_window):
         def func():
             dialog_window.close()
-            DB().Users.update({'server': edit_server.toPlainText()})
+            table_users.update({'server': edit_server.toPlainText()})
 
         return func
 
@@ -97,7 +171,7 @@ class Notification:
         controller[number_tab]
 
     def get_assigned_to_you_tasks(self):
-        assigned_tasks = DB().AssignedTasks.get_all()
+        assigned_tasks = table_assigned_tasks.get_all()
         for assigned_task in assigned_tasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
                 else assigned_task['title']
@@ -162,7 +236,7 @@ class Notification:
 
     @staticmethod
     def get_notifications():
-        notifications = DB().Notifications.get_all()
+        notifications = table_notifications.get_all()
         for notification in notifications:
             repo = notification['full_name']
             text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, notification['created_time'])
@@ -226,106 +300,14 @@ class Notification:
         return lambda: webbrowser.open_new(url)
 
 
-class DB:
-    def __init__(self):
-        self.Notifications = my_sql_lite.Notifications()
-        self.Users = my_sql_lite.Users()
-        self.AssignedTasks = my_sql_lite.AssignedTasks()
-
-    @staticmethod
-    def formatting_the_date(string_date):
-        try:
-            string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
-        except ValueError:
-            return ''
-        timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
-        timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
-        string_date = string_date + datetime.timedelta(hours=timezone)
-        return string_date
-
-    @staticmethod
-    def get_assigned_to_you(all_tasks, api):
-        try:
-            user = json.loads(api.get_user().text)
-        except (json.decoder.JSONDecodeError, AttributeError):
-            return []
-        # убираю из списка задач мои, чтобы остались только назначенные.
-
-        def filter_tasks(assigned_to_you_tasks):
-            if not (assigned_to_you_tasks['assignees'] is None):
-                for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
-                    if assigned_to_you_task['login'] == user['login']:
-                        return True
-            return False
-        return list(filter(filter_tasks, all_tasks))
-
-    def save_notifications(self, api):
-        self.Notifications.clear()
-        try:
-            notifications = json.loads(api.get_notifications().text)
-        except (json.decoder.JSONDecodeError, AttributeError):
-            notifications = []
-        for notification in notifications:
-            message = 'null'
-            if not (notification['subject']['latest_comment_url'] == ''):
-                id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                ['latest_comment_url']))[0].replace('comments/', '')
-                try:
-                    message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
-                except (json.decoder.JSONDecodeError, AttributeError):
-                    message = 'null'
-            user_login = 'null'
-            if not (notification['subject']['url'] == ''):
-                repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
-                    replace('repos/', '').replace('/issues', '')
-                issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
-                try:
-                    user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
-                except (json.decoder.JSONDecodeError, AttributeError):
-                    user_login = 'null'
-            full_name = "'{}'".format(notification['repository']['full_name'])
-            created_time = "'{}'".format(self.formatting_the_date(notification['repository']['owner']['created']))
-            url = "'{}'".format(notification['subject']['url'])
-            self.Notifications.save(message, user_login, full_name, created_time, url)
-
-    def save_assigned_tasks(self, api):
-        self.AssignedTasks.clear()
-        try:
-            all_tasks = json.loads(api.get_issues().text)
-            assigned_tasks = self.get_assigned_to_you(all_tasks, api)
-        except (json.decoder.JSONDecodeError, AttributeError):
-            assigned_tasks = []
-        for assigned_task in assigned_tasks:
-            title = "'{}'".format(assigned_task['title'])
-            task_id = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            full_name = "'{}'".format(assigned_task['repository']['full_name'])
-            created_time = "'{}'".format(self.formatting_the_date(assigned_task['created_at']).strftime('%d-%m-%Y'))
-            creator = "'{}'".format(assigned_task['user']['login'])
-            url = "'{}'".format(assigned_task['html_url'])
-            milestone_title = "''"
-            if not (assigned_task['milestone'] is None):
-                milestone_title = "'{}'".format(assigned_task['milestone']['title'])
-            self.AssignedTasks.save(task_id, title, full_name, created_time, creator, url, milestone_title)
-
-    def save_user(self, api):
-        try:
-            user_json = json.loads(api.get_user().text)
-        except (json.decoder.JSONDecodeError, AttributeError):
-            user_json = {'full_name': 'null', 'login': 'null', 'avatar_url': 'null'}
-        full_name = "'{}'".format(user_json.get('full_name', 'null'))
-        login = "'{}'".format(user_json.get('login', 'null'))
-        avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
-        self.Users.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
-
-
 class Api:
 
-    def __init__(self, tray):
+    def __init__(self, tray, server, token):
         logging.debug("Создание экземляра класса - Api")
         self.there_connection = True
-        self.__server = DB().Users.get()['server']
+        self.__server = server
         self.tray = tray
-        self.__access_token = DB().Users.get()['token']
+        self.__access_token = token
 
     def connection_server(self):
         try:
@@ -334,7 +316,7 @@ class Api:
             self.tray.set_icon('img/dart.png')
             self.tray.constructor_menu()
             self.there_connection = True
-            self.__server = DB().Users.get()['server']
+            self.__server = table_users.get()['server']
             self.tray.constructor_menu()
             self.timer_connection_server.stop()
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
@@ -396,7 +378,7 @@ class Api:
 
     def update_access_token(self):
         logging.debug("Перезапись токена доступа")
-        self.__access_token = DB().Users.get()['token']
+        self.__access_token = table_users.get()['token']
 
     @property
     def get_access_token(self):
@@ -407,7 +389,7 @@ class Api:
         return self.__server
 
     def update_server(self):
-        server = DB().Users.get()['server']
+        server = table_users.get()['server']
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
@@ -428,7 +410,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
-        read_data = DB().Users.get()
+        read_data = table_users.get()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
         self.edit_delay_notification.setText(str(read_data.get('delay', '')))
@@ -446,15 +428,15 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token.setText(self.edit_token.text())
         self.edit_server.setText(self.edit_server.text())
         if not self.tray_icon.user_logged:
-            self.edit_token.setText(DB().Users.get()['token'])
-        DB().Users.update({'token': "'{}'".format(self.edit_token.text()),
+            self.edit_token.setText(table_users.get()['token'])
+        table_users.update({'token': "'{}'".format(self.edit_token.text()),
                            'server': "'{}'".format(self.edit_server.text())})
         self.tray_icon.api.update_server()
         self.tray_icon.api.update_access_token()
         if not self.edit_delay_notification.text().isdigit():
             self.edit_delay_notification.setText('45')
         if float(self.edit_delay_notification.text()) > 0:
-            DB().Users.update({'delay': self.edit_delay_notification.text()})
+            table_users.update({'delay': self.edit_delay_notification.text()})
             if self.tray_icon.timer_subscribe_notifications.isActive():
                 self.tray_icon.timer_subscribe_notifications.stop()
                 self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.text()) * 1000))
@@ -481,7 +463,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        self.api = Api(self)
+        self.api = Api(self, table_users.get()['server'], table_users.get()['token'])
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
@@ -490,33 +472,33 @@ class TrayIcon:
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
-        DB().Notifications.clear()
-        DB().save_notifications(self.api)
-        DB().AssignedTasks.clear()
-        DB().save_assigned_tasks(self.api)
-        if not len(DB().Notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
+        table_notifications.clear()
+        save_notifications(self.api, json.loads(self.api.get_notifications().text), table_notifications)
+        table_assigned_tasks.clear()
+        save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), table_assigned_tasks)
+        if not len(table_notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
             self.constructor_menu()
             self.timer_animation.start(2000)
 
     @staticmethod
     def download_icon():
         logging.debug("Скачивание аватара пользователя.")
-        resource = requests.get(DB().Users.get()['avatar_url'])
+        resource = requests.get(table_users.get()['avatar_url'])
         if not(os.path.exists('img')):
             os.mkdir('img')
-        with open("img/{}.jpg".format(DB().Users.get()['id']), "wb") as out:
+        with open("img/{}.jpg".format(table_users.get()['id']), "wb") as out:
             out.write(resource.content)
 
     def animation(self):
         if self.status_animation == 0:
-            self.set_icon("img/{}.jpg".format(str(DB().Users.get()['id'])))
+            self.set_icon("img/{}.jpg".format(str(table_users.get()['id'])))
             self.status_animation = 1
         else:
             self.set_icon('img/notification.png')
             self.status_animation = 0
 
     def show_notification(self):
-        if not len(DB().Notifications.get_all()) == 0:
+        if not len(table_notifications.get_all()) == 0:
             self.window_notification.create_window_notification()
             self.window_notification.show()
 
@@ -534,7 +516,7 @@ class TrayIcon:
 
     def authentication_successful(self):
         self.user_logged = False
-        user = DB().Users.get()
+        user = table_users.get()
         logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(user['full_name']))
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
@@ -548,7 +530,7 @@ class TrayIcon:
         self.menu.addAction(login)
         self.menu_items.append(login)
         self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
-        read_data = DB().Users.get()
+        read_data = table_users.get()
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
 
@@ -559,11 +541,11 @@ class TrayIcon:
         self.menu.addAction(name_aplication)
         self.menu_items.append(name_aplication)
         if self.api.there_connection:
-            DB().save_user(self.api)
+            update_user(json.loads(self.api.get_user().text), table_users)
         self.menu_items = []
         self.menu = QMenu()
         self.tray.setToolTip("Необходима авторизация через токен")
-        if self.api.there_connection and not DB().Users.get()['full_name'] == 'null':
+        if self.api.there_connection and not table_users.get()['full_name'] == 'null':
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
@@ -588,7 +570,7 @@ class TrayIcon:
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
         self.window_notification.main_window.close()
-        DB().Users.update({'token': 'null'})
+        table_users.update({'token': 'null'})
         self.api.update_access_token()
         self.set_icon('img/dart.png')
         self.user_logged = True
