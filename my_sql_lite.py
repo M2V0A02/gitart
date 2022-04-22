@@ -9,10 +9,16 @@ def dict_factory(cursor, row):
     return d
 
 
-class AssignedTasks:
-    def __init__(self):
-        self.conn = conn
-        self.cur = conn.cursor()
+class DataBase:
+    def __init__(self, file):
+        self.conn = sqlite3.connect(file)
+        self.conn.row_factory = dict_factory
+        self.cur = self.conn.cursor()
+
+
+class AssignedTasks(DataBase):
+    def __init__(self, file):
+        super().__init__(file)
         self.name_table = "AssignedTasks"
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INT PRIMARY KEY ,title TEXT, created_at TEXT,
                     full_name TEXT, creator TEXT, url TEXT, milestone_title TEXT);""".format(self.name_table))
@@ -33,10 +39,10 @@ class AssignedTasks:
         self.conn.commit()
 
 
-class Users:
-    def __init__(self):
+class Users(DataBase):
+    def __init__(self, file):
+        super().__init__(file)
         self.conn = conn
-        self.cur = self.conn.cursor()
         self.name_table = "Users"
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}( id INTEGER PRIMARY KEY, token TEXT, server TEXT, delay INT,
                          full_name TEXT, login TEXT, avatar_url TEXT);""".format(self.name_table))
@@ -67,11 +73,9 @@ class Users:
         self.conn.commit()
 
 
-class Notifications:
-    def __init__(self):
-        self.conn = conn
-        self.cur = conn.cursor()
-        conn.row_factory = dict_factory
+class Notifications(DataBase):
+    def __init__(self, file):
+        super().__init__(file)
         self.name_table = "Notifications"
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}
                     (id INTEGER PRIMARY KEY, message TEXT, user_login TEXT, full_name TEXT, created_time TEXT,
