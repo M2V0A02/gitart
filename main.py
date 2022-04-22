@@ -473,6 +473,9 @@ class TrayIcon:
         logging.debug("Проверка новых сообщений")
         table_notifications.clear()
         save_notifications(self.api, json.loads(self.api.get_notifications().text), table_notifications)
+        notifications = json.loads(self.api.get_notifications().text)
+        self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
+                             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         table_assigned_tasks.clear()
         save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), table_assigned_tasks)
         if not len(table_notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
@@ -529,7 +532,9 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        self.tray.setToolTip("{}({})".format(user['full_name'], user["login"]))
+        notifications = json.loads(self.api.get_notifications().text)
+        self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
+                             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         read_data = table_users.get()
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
