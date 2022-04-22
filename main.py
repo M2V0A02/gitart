@@ -311,7 +311,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            self.tray.tray.showMessage('Уведомление', "Соединение восстановлено", QIcon('img/dart.png'))
+            self.tray.tray.showMessage('Подключение к серверу', "Установлено", QIcon('img/dart.png'))
             self.tray.set_icon('img/dart.png')
             self.tray.constructor_menu()
             self.there_connection = True
@@ -331,7 +331,7 @@ class Api:
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout):
             icon = QIcon('img/connection_lost.png')
-            self.tray.tray.showMessage('Ошибка', "Соединение потеряно", QIcon('img/connection_lost.png'))
+            self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
             self.there_connection = False
             self.tray.tray.setIcon(icon)
             self.tray.constructor_menu()
