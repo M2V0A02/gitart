@@ -523,6 +523,7 @@ class TrayIcon:
         self.menu_items.append(name_user)
         self.download_icon()
         self.set_icon("img/{}.jpg".format(str(user['id'])))
+        self.tray.showMessage('Авторизация', "Получена", QIcon("img/{}.jpg".format(str(user['id']))))
         logout = self.logout
         login = QAction('Выйти из {}'.format(user["login"]))
         login.triggered.connect(logout)
@@ -573,6 +574,7 @@ class TrayIcon:
         self.api.update_access_token()
         self.set_icon('img/dart.png')
         self.user_logged = True
+        self.tray.showMessage('Авторизация', "Снята", QIcon('img/dart.png'))
         self.constructor_menu()
 
 
