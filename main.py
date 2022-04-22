@@ -22,7 +22,6 @@ table_assigned_tasks = my_sql_lite.AssignedTasks('api.db')
 table_users = my_sql_lite.Users('api.db')
 
 
-@staticmethod
 def formatting_the_date(string_date):
     try:
         string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
@@ -34,8 +33,7 @@ def formatting_the_date(string_date):
     return string_date
 
 
-@staticmethod
-def get_assigned_to_you(all_tasks, user):
+def filter_assigned_you_task(all_tasks, user):
 
     def filter_tasks(assigned_to_you_tasks):
         if not (assigned_to_you_tasks['assignees'] is None):
@@ -72,7 +70,7 @@ def save_notifications(api, notifications, table):
 
 
 def save_assigned_tasks(api, assigned_tasks, table):
-    assigned_to_you_tasks = get_assigned_to_you(assigned_tasks, json.loads(api.get_user().text))
+    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, json.loads(api.get_user().text))
     for assigned_to_you_task in assigned_to_you_tasks:
         title = "'{}'".format(assigned_to_you_task['title'])
         task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
@@ -170,7 +168,8 @@ class Notification:
         }
         controller[number_tab]
 
-    def get_assigned_to_you_tasks(self):
+    @staticmethod
+    def get_assigned_to_you_tasks():
         assigned_tasks = table_assigned_tasks.get_all()
         for assigned_task in assigned_tasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
