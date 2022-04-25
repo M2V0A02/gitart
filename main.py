@@ -17,9 +17,9 @@ from PyQt5.QtWinExtras import QtWin
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
-table_notifications = my_sql_lite.Notifications('api.db')
-table_assigned_tasks = my_sql_lite.AssignedTasks('api.db')
-table_users = my_sql_lite.Users('api.db')
+table_notifications = my_sql_lite.Notifications()
+table_assigned_tasks = my_sql_lite.AssignedTasks()
+table_users = my_sql_lite.Users()
 
 
 def formatting_the_date(string_date):
@@ -34,13 +34,13 @@ def formatting_the_date(string_date):
 
 
 def filter_assigned_you_task(all_tasks, user):
-
     def filter_tasks(assigned_to_you_tasks):
         if not (assigned_to_you_tasks['assignees'] is None):
             for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
                 if assigned_to_you_task['login'] == user['login']:
                     return True
         return False
+
     return list(filter(filter_tasks, all_tasks))
 
 
@@ -63,9 +63,10 @@ def save_notifications(api, notifications, table):
                 user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
-        full_name = "'{}'".format(notification['repository']['full_name'])
-        created_time = "'{}'".format(formatting_the_date(notification['repository']['owner']['created']))
-        url = "'{}'".format(notification['subject']['url'])
+        full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
+        created_time = "'{}'".format(formatting_the_date(notification.get('repository', {}).get('owner', {})
+                                                         .get('created', 'null')))
+        url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
         table.save(message, user_login, full_name, created_time, url)
 
 
