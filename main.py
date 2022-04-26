@@ -463,7 +463,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        self.id_exist_messages = set()
+        self.id_exist_messages = []
         self.api = Api(self, table_users.get()['server'], table_users.get()['token'])
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
@@ -492,12 +492,16 @@ class TrayIcon:
         save_notifications(self.api, json.loads(self.api.get_notifications().text), table_notifications)
         notifications = json.loads(self.api.get_notifications().text)
         change_notifications = []
-        new_id = []
+        new_notifications = []
         for notification in notifications:
-            new_id.append(notification['id'])
-            if not notification['id'] in self.id_exist_messages:
+            if_exist = False
+            new_notifications.append(notification)
+            for id_exist_message in self.id_exist_messages:
+                if id_exist_message == notification:
+                    if_exist = True
+            if not if_exist:
                 change_notifications.append(notification)
-        self.id_exist_messages = set(new_id)
+        self.id_exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
@@ -542,8 +546,10 @@ class TrayIcon:
         self.tray.setIcon(self.icon)
 
     def authentication_successful(self):
-        self.user_logged = False
         user = table_users.get()
+        if self.user_logged:
+            self.tray.showMessage('Авторизация', "Получена", QIcon("img/{}.jpg".format(str(user['id']))))
+        self.user_logged = False
         logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(user['full_name']))
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
@@ -551,7 +557,6 @@ class TrayIcon:
         self.menu_items.append(name_user)
         self.download_icon()
         self.set_icon("img/{}.jpg".format(str(user['id'])))
-        self.tray.showMessage('Авторизация', "Получена", QIcon("img/{}.jpg".format(str(user['id']))))
         logout = self.logout
         login = QAction('Выйти из {}'.format(user["login"]))
         login.triggered.connect(logout)
