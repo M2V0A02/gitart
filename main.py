@@ -463,6 +463,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
+        self.id_exist_messages = set()
         self.api = Api(self, table_users.get()['server'], table_users.get()['token'])
         self.window_notification = Notification(self.api, self)
         self.timer_animation = QtCore.QTimer()
@@ -470,11 +471,34 @@ class TrayIcon:
         self.timer_subscribe_notifications = QtCore.QTimer()
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
 
+    def output_in_tray_data_about_tasks(self, notifications):
+        for notification in notifications:
+            if notification['subject']['state'] == 'closed':
+                message = 'репозиторий закрыт'
+            elif not (notification['subject']['latest_comment_url'] == ''):
+                id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                try:
+                    message = "\n'Новое сообщение:{}'".format(json.loads(self.api.get_comment(id_comments).text)['body'])
+                except json.decoder.JSONDecodeError:
+                    message = 'Репозиторий открыт'
+            else:
+                message = "Репозиторий открыт"
+            self.tray.showMessage(notification['subject']['title'], message, QIcon('img/notification.png'))
+
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
         table_notifications.clear()
         save_notifications(self.api, json.loads(self.api.get_notifications().text), table_notifications)
         notifications = json.loads(self.api.get_notifications().text)
+        change_notifications = []
+        new_id = []
+        for notification in notifications:
+            new_id.append(notification['id'])
+            if not notification['id'] in self.id_exist_messages:
+                change_notifications.append(notification)
+        self.id_exist_messages = set(new_id)
+        self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         table_assigned_tasks.clear()
