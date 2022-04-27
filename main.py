@@ -86,9 +86,9 @@ def save_assigned_tasks(api, assigned_tasks, table):
 
 
 def update_user(user_json, table):
-    full_name = "'{}'".format(user_json.get('full_name', 'null'))
-    login = "'{}'".format(user_json.get('login', 'null'))
-    avatar_url = "'{}'".format(user_json.get('avatar_url', 'null'))
+    full_name = "'{}'".format(user_json.get('full_name', None))
+    login = "'{}'".format(user_json.get('login', None))
+    avatar_url = "'{}'".format(user_json.get('avatar_url', None))
     table.update({'full_name': full_name, 'login': login, 'avatar_url': avatar_url})
 
 
@@ -321,7 +321,7 @@ class Api:
             self.timer_connection_server.stop()
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
-               requests.exceptions.ReadTimeout):
+               requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             logging.debug("Попытка соединение с сервером.")
 
     def check_connection_server(self):
@@ -330,7 +330,7 @@ class Api:
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
-               requests.exceptions.ReadTimeout):
+               requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
             self.there_connection = False
@@ -457,8 +457,12 @@ class TrayIcon:
         self.user_id = 0
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
+        self.len_new_notification = 0
+        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
         self.tray.setVisible(True)
         self.menu = QMenu()
+        self.timer_update_tool_tip = QtCore.QTimer()
+        self.timer_update_tool_tip.timeout.connect(self.update_tool_tip)
         self.hint = ''
         self.user_logged = True
         self.notifications = []
@@ -545,6 +549,25 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
+    def update_tool_tip(self):
+        now_delta = datetime.timedelta(minutes=datetime.datetime.today().minute, seconds=datetime.datetime.today().second)
+        past_delta = datetime.timedelta(minutes=self.update_date_time.minute, seconds=self.update_date_time.second)
+        difference = now_delta - past_delta
+        minute_difference = difference.seconds // 60
+        second_difference = difference.seconds % 60
+        if not minute_difference == 0:
+            minute = "{} минут{}".format(minute_difference, get_ending_by_number(minute_difference, ['а', 'ы', '']))
+        else:
+            minute = ''
+        if not second_difference == 0:
+            second = "{} секунд{}".format(second_difference, get_ending_by_number(second_difference, ['а', 'ы', '']))
+        else:
+            second = ''
+
+        self.tray.setToolTip("Вам назначенно {} задач{}. Обновлено - {} {} назад"
+                             .format(self.len_new_notification, get_ending_by_number(self.len_new_notification, ['а', 'и', '']),
+                                     minute, second))
+
     def authentication_successful(self):
         user = table_users.get()
         if self.user_logged:
@@ -562,9 +585,9 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        notifications = json.loads(self.api.get_notifications().text)
-        self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
-                             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
+        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
+        if not(self.timer_animation.isActive()):
+            self.timer_update_tool_tip.start(1000)
         read_data = table_users.get()
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
@@ -575,12 +598,16 @@ class TrayIcon:
         name_aplication.setEnabled(False)
         self.menu.addAction(name_aplication)
         self.menu_items.append(name_aplication)
-        if self.api.there_connection:
-            update_user(json.loads(self.api.get_user().text), table_users)
+        try:
+            if self.api.there_connection:
+                update_user(json.loads(self.api.get_user().text), table_users)
+        except (json.decoder.JSONDecodeError, AttributeError):
+            logging.debug("Пользователь не авторизован")
         self.menu_items = []
         self.menu = QMenu()
         self.tray.setToolTip("Необходима авторизация через токен")
-        if self.api.there_connection and not table_users.get()['full_name'] == 'null':
+        if self.api.there_connection and not (table_users.get()['full_name']
+                                              is None or table_users.get()['full_name'] == 'None'):
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
@@ -604,6 +631,7 @@ class TrayIcon:
         logging.info("TrayIcon: Выход из учетной записи")
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
+        self.timer_update_tool_tip.stop()
         self.window_notification.main_window.close()
         table_users.update({'token': 'null'})
         self.api.update_access_token()
