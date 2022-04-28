@@ -597,6 +597,7 @@ class TrayIcon:
             self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
 
     def constructor_menu(self):
+        self.tray.setToolTip("Необходима авторизация через токен")
         logging.debug("TrayIcon: Создание контекстного меню для TrayIcon")
         name_aplication = QAction("Gitart")
         name_aplication.setEnabled(False)
@@ -606,10 +607,12 @@ class TrayIcon:
             if self.api.there_connection:
                 update_user(json.loads(self.api.get_user().text), table_users)
         except (json.decoder.JSONDecodeError, AttributeError):
-            logging.debug("Пользователь не авторизован")
+            self.tray.setToolTip("Подключение к серверу отсуствует")
+            logging.debug("Подключение к серверу отсуствует")
+        if table_users.get()['server'] == '':
+            self.tray.setToolTip("Введите адрес сервера")
         self.menu_items = []
         self.menu = QMenu()
-        self.tray.setToolTip("Необходима авторизация через токен")
         if self.api.there_connection and not (table_users.get()['full_name']
                                               is None or table_users.get()['full_name'] == 'None'):
             self.authentication_successful()
