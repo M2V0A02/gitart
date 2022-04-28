@@ -308,6 +308,7 @@ class Api:
         self.__server = server
         self.tray = tray
         self.__access_token = token
+        self.first_connection = True
 
     def connection_server(self):
         try:
@@ -332,7 +333,9 @@ class Api:
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
-            self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
+            if not self.first_connection:
+                self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
+            self.first_connection = False
             self.there_connection = False
             self.tray.tray.setIcon(icon)
             self.tray.constructor_menu()
@@ -389,6 +392,7 @@ class Api:
         return self.__server
 
     def update_server(self):
+        self.first_connection = True
         server = table_users.get()['server']
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
