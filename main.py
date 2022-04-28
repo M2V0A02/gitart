@@ -406,6 +406,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.setupUi(self)
         self.edit_token = self.lineEdit
         self.edit_server = self.lineEdit_2
+        self.edit_server.setInputMask(r'\http{}'.format('x' * 20))
         self.edit_delay_notification = self.lineEdit_3
 
     def my_show(self):
