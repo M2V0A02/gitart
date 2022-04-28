@@ -136,7 +136,7 @@ def get_ending_by_number(number, possible_endings):
         return possible_endings[2]
 
 
-class Notification:
+class MainWindowTasks:
 
     def __init__(self, api, tray):
         self.tray = tray
@@ -474,7 +474,7 @@ class TrayIcon:
         self.setting = Setting(self)
         self.id_exist_messages = []
         self.api = Api(self, table_users.get()['server'], table_users.get()['token'])
-        self.window_notification = Notification(self.api, self)
+        self.window_tasks = MainWindowTasks(self.api, self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
@@ -539,8 +539,8 @@ class TrayIcon:
 
     def show_notification(self):
         if not len(table_notifications.get_all()) == 0:
-            self.window_notification.create_window_notification()
-            self.window_notification.show()
+            self.window_tasks.create_window_notification()
+            self.window_tasks.show()
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and not self.user_logged:  # Левая кнопка мыши
@@ -641,7 +641,7 @@ class TrayIcon:
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
         self.timer_update_tool_tip.stop()
-        self.window_notification.main_window.close()
+        self.window_tasks.main_window.close()
         table_users.update({'token': 'null'})
         self.api.update_access_token()
         self.set_icon('img/dart.png')
