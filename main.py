@@ -576,7 +576,8 @@ class TrayIcon:
     def authentication_successful(self):
         user = table_users.get()
         if self.user_logged:
-            self.tray.showMessage('Авторизация', "Получена", QIcon("img/{}.jpg".format(str(user['id']))))
+            info_about_user = "Логин: {} \nФИО: {}".format(user['login'], user['full_name'])
+            self.tray.showMessage('Авторизация', info_about_user, QIcon("img/{}.jpg".format(str(user['id']))))
         self.user_logged = False
         logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(user['full_name']))
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
