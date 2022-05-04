@@ -82,12 +82,13 @@ class Notifications:
         self.name_table = "Notifications"
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}
                     (id INTEGER PRIMARY KEY, message TEXT, user_login TEXT, full_name TEXT, created_time TEXT,
-                     url TEXT)""".format(self.name_table))
+                     url TEXT, user_avatar_name TEXT)""".format(self.name_table))
         self.conn.commit()
 
-    def save(self, message, user_login, full_name, created_time, url):
-        self.cur.execute("INSERT INTO {}(message, user_login, full_name, created_time, url) VALUES ({}, {}, {}, {}, {})"
-                         .format(self.name_table, message, user_login, full_name, created_time, url))
+    def save(self, message, user_login, full_name, created_time, url, user_avatar_name):
+        self.cur.execute("INSERT INTO {}(message, user_login, full_name, created_time, url, user_avatar_name)"
+                         " VALUES ({}, {}, {}, {}, {}, {})"
+                         .format(self.name_table, message, user_login, full_name, created_time, url, user_avatar_name))
         self.conn.commit()
 
     def get_all(self):

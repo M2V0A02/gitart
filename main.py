@@ -64,6 +64,7 @@ def save_notifications(api, notifications, table):
             except (json.decoder.JSONDecodeError, AttributeError):
                 message = 'null'
         user_login = 'null'
+        user_avatar_name = 'null'
         if not (notification['subject']['url'] == ''):
             repo = re.search(r'repos/.+/issues', notification['subject']['url'])[0]. \
                 replace('repos/', '').replace('/issues', '')
@@ -71,13 +72,15 @@ def save_notifications(api, notifications, table):
             try:
                 repo = json.loads(api.get_repos_issues(repo, issues).text)
                 user_login = "'{}'".format(repo['user']['login'])
+                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ""))
+                download_icon(repo['user']['avatar_url'], user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
         created_time = "'{}'".format(formatting_the_date(notification.get('repository', {}).get('owner', {})
                                                          .get('created', 'null')))
         url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
-        table.save(message, user_login, full_name, created_time, url)
+        table.save(message, user_login, full_name, created_time, url, user_avatar_name)
 
 
 def save_assigned_tasks(api, assigned_tasks, table):
@@ -251,7 +254,7 @@ class MainWindowTasks:
             repo = notification['full_name']
             text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, notification['created_time'])
             if not(notification['user_login'] is None):
-                text_title = "{}, пользователь - {}.".format(text_title, notification['user_login'])
+                text_title = "{}, пользователь - {}".format(text_title, notification['user_login'])
                 text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
             notification['text_title'] = text_title
             notification['number_issues'] = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
@@ -275,9 +278,15 @@ class MainWindowTasks:
         layout.addWidget(label)
         main_layout.addLayout(layout)
         for notification in notifications:
+            layout = QHBoxLayout()
             label = QLabel(notification['text_title'])
             label.setStyleSheet("font-size:12px;")
-            main_layout.addWidget(label)
+            layout.addWidget(label)
+            label = QLabel(".")
+            pixmap = QtGui.QPixmap("img/{}.jpg".format(notification['user_avatar_name']))
+            label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
+            layout.addWidget(label)
+            main_layout.addLayout(layout)
             if not(notification['message'] is None):
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
                 plain_text.setReadOnly(True)
