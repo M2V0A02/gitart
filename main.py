@@ -22,6 +22,15 @@ table_assigned_tasks = my_sql_lite.AssignedTasks()
 table_users = my_sql_lite.Users()
 
 
+def download_icon(url, name):
+    logging.debug("Скачивание аватара пользователя.")
+    resource = requests.get(url)
+    if not (os.path.exists('img')):
+        os.mkdir('img')
+    with open("img/{}.jpg".format(name), "wb") as out:
+        out.write(resource.content)
+
+
 def formatting_the_date(string_date):
     try:
         string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
@@ -60,7 +69,8 @@ def save_notifications(api, notifications, table):
                 replace('repos/', '').replace('/issues', '')
             issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
             try:
-                user_login = "'{}'".format(json.loads(api.get_repos_issues(repo, issues).text)['user']['login'])
+                repo = json.loads(api.get_repos_issues(repo, issues).text)
+                user_login = "'{}'".format(repo['user']['login'])
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
@@ -520,14 +530,6 @@ class TrayIcon:
             self.constructor_menu()
             self.timer_animation.start(2000)
 
-    @staticmethod
-    def download_icon():
-        logging.debug("Скачивание аватара пользователя.")
-        resource = requests.get(table_users.get()['avatar_url'])
-        if not(os.path.exists('img')):
-            os.mkdir('img')
-        with open("img/{}.jpg".format(table_users.get()['id']), "wb") as out:
-            out.write(resource.content)
 
     def animation(self):
         if self.status_animation == 0:
@@ -584,7 +586,7 @@ class TrayIcon:
         name_user.setEnabled(False)
         self.menu.addAction(name_user)
         self.menu_items.append(name_user)
-        self.download_icon()
+        download_icon(user['avatar_url'], table_users.get()['id'])
         self.set_icon("img/{}.jpg".format(str(user['id'])))
         logout = self.logout
         login = QAction('Выйти из {}'.format(user["login"]))
