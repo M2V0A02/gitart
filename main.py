@@ -248,20 +248,34 @@ class MainWindowTasks:
         self.tab_widget.update()
 
     @staticmethod
-    def get_notifications():
-        notifications = table_notifications.get_all()
-        for notification in notifications:
-            repo = notification['full_name']
-            text_title = 'Репозиторий: {}, дата создания: {}'.format(repo, notification['created_time'])
-            if not(notification['user_login'] is None):
-                text_title = "{}, пользователь - {}".format(text_title, notification['user_login'])
-                text_title = '{:.127}...'.format(text_title) if len(text_title) > 130 else text_title
-            notification['text_title'] = text_title
-            notification['number_issues'] = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
-        return notifications
+    def create_notification_title(notification):
+        layout = QHBoxLayout()
+        label = QLabel('Репозиторий:')
+        label.setStyleSheet('color: #808080;')
+        layout.addWidget(label)
+        repo = notification['full_name']
+        layout.addWidget(QLabel("{}, ".format(repo)))
+        label = QLabel('дата создания:')
+        label.setStyleSheet('color: #808080;')
+        layout.addWidget(label)
+        layout.addWidget(QLabel("{}, ".format(notification['created_time'])))
+        if not (notification['user_login'] is None):
+            label = QLabel('пользователь: ')
+            label.setStyleSheet('color: #808080;')
+            layout.addWidget(label)
+            label = QLabel()
+            pixmap = QtGui.QPixmap("img/{}.jpg".format(notification['user_avatar_name']))
+            label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
+            label.setStyleSheet("margin:0; padding:0")
+            layout.addWidget(label)
+            layout.addWidget(label)
+            layout.addWidget(QLabel("{}.".format(notification['user_login'])))
+        layout.addStretch()
+        return layout
 
     def create_window_notification(self):
-        notifications = self.get_notifications()
+        
+        notifications = table_notifications.get_all()
         widget = QWidget()
         main_layout = QVBoxLayout()
         label = QLabel("Не прочитано - {} сообщен{}.".format(
@@ -278,15 +292,8 @@ class MainWindowTasks:
         layout.addWidget(label)
         main_layout.addLayout(layout)
         for notification in notifications:
-            layout = QHBoxLayout()
-            label = QLabel(notification['text_title'])
-            label.setStyleSheet("font-size:12px;")
-            layout.addWidget(label)
-            label = QLabel(".")
-            pixmap = QtGui.QPixmap("img/{}.jpg".format(notification['user_avatar_name']))
-            label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
-            layout.addWidget(label)
-            main_layout.addLayout(layout)
+            notification['number_issues'] = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
+            main_layout.addLayout(self.create_notification_title(notification))
             if not(notification['message'] is None):
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
                 plain_text.setReadOnly(True)
@@ -301,6 +308,7 @@ class MainWindowTasks:
             button.clicked.connect(open_notification)
             main_layout.addWidget(button)
         main_layout.addStretch()
+
         widget.setLayout(main_layout)
         self.notifications_scroll_area.setWidget(widget)
         self.tab_widget.update()
