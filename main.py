@@ -274,7 +274,7 @@ class MainWindowTasks:
         return layout
 
     def create_window_notification(self):
-        
+        group_box = QGroupBox()
         notifications = table_notifications.get_all()
         widget = QWidget()
         main_layout = QVBoxLayout()
@@ -291,24 +291,30 @@ class MainWindowTasks:
         label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
         layout.addWidget(label)
         main_layout.addLayout(layout)
+        layout = QVBoxLayout()
         for notification in notifications:
+            layout_notification = QVBoxLayout()
             notification['number_issues'] = re.search(r'issues/\d+', notification['url'])[0].replace('issues/', '')
-            main_layout.addLayout(self.create_notification_title(notification))
+            layout_notification.addLayout(self.create_notification_title(notification))
             if not(notification['message'] is None):
                 plain_text = QPlainTextEdit('Сообщение: {}.'.format(notification['message']))
                 plain_text.setReadOnly(True)
                 plain_text.setFixedSize(740, 75)
-                main_layout.addWidget(plain_text)
+                layout_notification.addWidget(plain_text)
             open_notification = self.open_url(notification['url'].replace('api/v1/repos/', ''))
             button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'],
                                                                     notification['number_issues']))
             button.setStyleSheet(
                 """font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:
-                 .28571429rem; height: 20px; border-color: #dedede; text-align:right;""")
+                 .28571429rem; height: 20px; border-color: #dedede; text-align:right; margin:0, 0, 0, 20""")
             button.clicked.connect(open_notification)
-            main_layout.addWidget(button)
-        main_layout.addStretch()
+            layout_notification.addWidget(button)
+            layout_notification.setSpacing(10)
+            layout.addLayout(layout_notification)
+        layout.setSpacing(50)
+        group_box.setLayout(layout)
 
+        main_layout.addWidget(group_box)
         widget.setLayout(main_layout)
         self.notifications_scroll_area.setWidget(widget)
         self.tab_widget.update()
