@@ -77,8 +77,7 @@ def save_notifications(api, notifications, table):
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
-        created_time = "'{}'".format(formatting_the_date(notification.get('repository', {}).get('owner', {})
-                                                         .get('created', 'null')))
+        created_time = "'{}'".format(formatting_the_date(notification.get('updated_at', 'null')))
         url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
         table.save(message, user_login, full_name, created_time, url, user_avatar_name)
 
@@ -552,7 +551,6 @@ class TrayIcon:
         if not len(table_notifications.get_all()) == 0 and not(self.timer_animation.isActive()):
             self.constructor_menu()
             self.timer_animation.start(2000)
-
 
     def animation(self):
         if self.status_animation == 0:
