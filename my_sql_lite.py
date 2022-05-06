@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect('api.db')
+conn = sqlite3.connect('api.db', check_same_thread=False)
 
 
 def dict_factory(cursor, row):
@@ -19,6 +19,7 @@ def change_conn(new_con):
 
 class AssignedTasks:
     def __init__(self):
+
         self.conn = conn
         self.cur = self.conn.cursor()
         self.name_table = "AssignedTasks"
@@ -63,7 +64,7 @@ class Users:
         return self.cur.fetchone()
 
     def update(self, update_dict):
-        sql_command = "UPDATE {} set ".format(self.name_table)
+        sql_command = "UPDATE {} SET ".format(self.name_table)
         for key in update_dict:
             sql_command += "{} = {}, ".format(key, update_dict[key])
         sql_command = sql_command[0:len(sql_command) - 2]
