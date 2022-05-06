@@ -79,7 +79,8 @@ def save_notifications(api, notifications, table):
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
         created_time = "'{}'".format(formatting_the_date(notification.get('updated_at', 'null')))
         url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
-        table.save(message, user_login, full_name, created_time, url, user_avatar_name)
+        state = "'{}'".format(notification['subject']['state'])
+        table.save(message, user_login, full_name, created_time, url, user_avatar_name, state)
 
 
 def save_assigned_tasks(api, assigned_tasks, table):
@@ -97,7 +98,8 @@ def save_assigned_tasks(api, assigned_tasks, table):
         table.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
 
-def update_user(user_json):
+def update_user(api):
+    user_json = json.loads(api.get_user().text)
     full_name = "'{}'".format(user_json.get('full_name', 'NULL'))
     login = "'{}'".format(user_json.get('login', 'NULL'))
     avatar_url = "'{}'".format(user_json.get('avatar_url', 'NULL'))
@@ -168,7 +170,10 @@ class DataBase(QThread):
     def update_user(self, data_user):
         self.table_users.update(data_user)
         self.last_user = self.table_users.get()
-    
+
+    def get_user_data_from_api(self):
+        update_user(self.api)
+
     def set_authorisation(self, authorisation):
         self.authorisation = authorisation
 
@@ -539,22 +544,18 @@ class TrayIcon:
 
     def output_in_tray_data_about_tasks(self, notifications):
         for notification in notifications:
-            if notification['subject']['state'] == 'closed':
+            print(notification)
+            if notification['state'] == 'closed':
                 message = 'репозиторий закрыт'
-            elif not (notification['subject']['latest_comment_url'] == ''):
-                id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                ['latest_comment_url']))[0].replace('comments/', '')
-                try:
-                    message = "\n'Новое сообщение:{}'".format(json.loads(self.api.get_comment(id_comments).text)['body'])
-                except json.decoder.JSONDecodeError:
-                    message = 'Репозиторий открыт'
+            elif not (notification['message'] == ''):
+                message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Репозиторий открыт"
             self.tray.showMessage(notification['subject']['title'], message, QIcon('img/notification.png'))
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
-        notifications = json.loads(self.api.get_notifications().text)
+        notifications = data_base.get_notifications()
         change_notifications = []
         new_notifications = []
         for notification in notifications:
@@ -652,7 +653,7 @@ class TrayIcon:
         self.menu_items.append(name_aplication)
         try:
             if self.api.there_connection:
-                update_user(json.loads(self.api.get_user().text))
+                data_base.get_user_data_from_api()
         except (json.decoder.JSONDecodeError, AttributeError):
             self.tray.setToolTip("Подключение к серверу отсуствует")
             logging.debug("Подключение к серверу отсуствует")
@@ -660,6 +661,8 @@ class TrayIcon:
             self.tray.setToolTip("Введите адрес сервера")
         self.menu_items = []
         self.menu = QMenu()
+        print(self.api.there_connection)
+        print(data_base.get_user())
         if self.api.there_connection and not (data_base.get_user()['full_name']
                                               is None or data_base.get_user()['full_name'] == 'NULL'):
             self.authentication_successful()
