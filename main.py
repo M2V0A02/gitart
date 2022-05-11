@@ -19,7 +19,6 @@ from PyQt5.QtCore import QThread
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
-data_base = None
 
 
 def download_icon(url, name):
@@ -27,13 +26,13 @@ def download_icon(url, name):
     resource = requests.get(url)
     if not (os.path.exists('img')):
         os.mkdir('img')
-    with open("img/{}.jpg".format(name), "wb") as out:
+    with open("img/{}.jpg".format(name), 'wb') as out:
         out.write(resource.content)
 
 
 def formatting_the_date(string_date):
     try:
-        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        string_date = datetime.datetime.strptime(string_date, "%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
         return ''
     timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
@@ -72,21 +71,23 @@ def save_notifications(api, notifications, table):
             try:
                 repo = json.loads(api.get_repos_issues(repo, issues).text)
                 user_login = "'{}'".format(repo['user']['login'])
-                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ""))
+                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ''))
                 download_icon(repo['user']['avatar_url'], user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
         created_time = "'{}'".format(formatting_the_date(notification.get('updated_at', 'null')))
         url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
-        table.save(message, user_login, full_name, created_time, url, user_avatar_name)
+        state = "'{}'".format(notification['subject']['state'])
+        title = "'{}'".format(notification['subject']['title'])
+        table.save(message, user_login, full_name, created_time, url, user_avatar_name, state, title)
 
 
 def save_assigned_tasks(api, assigned_tasks, table):
     assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, json.loads(api.get_user().text))
     for assigned_to_you_task in assigned_to_you_tasks:
         title = "'{}'".format(assigned_to_you_task['title'])
-        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
+        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace("/issues/", '')
         full_name = "'{}'".format(assigned_to_you_task['repository']['full_name'])
         created_time = "'{}'".format(formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y'))
         creator = "'{}'".format(assigned_to_you_task['user']['login'])
@@ -97,7 +98,8 @@ def save_assigned_tasks(api, assigned_tasks, table):
         table.save(task_id, title, full_name, created_time, creator, url, milestone_title)
 
 
-def update_user(user_json):
+def update_user(api):
+    user_json = json.loads(api.get_user().text)
     full_name = "'{}'".format(user_json.get('full_name', 'NULL'))
     login = "'{}'".format(user_json.get('login', 'NULL'))
     avatar_url = "'{}'".format(user_json.get('avatar_url', 'NULL'))
@@ -106,7 +108,7 @@ def update_user(user_json):
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
-    critical_error = "{}: {},  \n".format(error_type, value)
+    critical_error = '{}: {},  \n'.format(error_type, value)
     for frame_summary in traces:
         critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
                                                                                  frame_summary.lineno,
@@ -128,15 +130,15 @@ def get_ending_by_number(number, possible_endings):
 class DataBase(QThread):
     def __init__(self, parent=None):
         super(DataBase, self).__init__(parent)
-        self.api = None
         self.table_notifications = my_sql_lite.Notifications()
         self.last_notifications = self.table_notifications.get_all()
         self.table_assigned_tasks = my_sql_lite.AssignedTasks()
         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
         self.table_users = my_sql_lite.Users()
         self.last_user = self.table_users.get()
+        self.api = Api(self, self.last_user['server'], self.last_user['token'])
         self.authorisation = False
-        
+
     def run(self):
         while True:
             if self.authorisation:
@@ -144,17 +146,10 @@ class DataBase(QThread):
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
                 if self.api is not None:
-                    try:
-                        save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
-                        save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
-                        self.last_notifications = self.table_notifications.get_all()
-                        self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                    except:
-                        pass
-                time.sleep(1)
-
-    def set_api(self, api):
-        self.api = api
+                    save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
+                    save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
+                    self.last_notifications = self.table_notifications.get_all()
+                    self.last_assigned_tasks = self.table_assigned_tasks.get_all()
 
     def get_notifications(self):
         return self.last_notifications
@@ -168,30 +163,37 @@ class DataBase(QThread):
     def update_user(self, data_user):
         self.table_users.update(data_user)
         self.last_user = self.table_users.get()
-    
+        self.api.update_access_token(data_base.get_user()['token'])
+        self.api.update_server(data_base.get_user()['server'])
+
+    def get_user_data_from_api(self):
+        update_user(self.api)
+
     def set_authorisation(self, authorisation):
         self.authorisation = authorisation
+
+    def get_there_connection(self):
+        return self.api.there_connection
 
 
 class MainWindowTasks:
 
-    def __init__(self, api, tray):
+    def __init__(self, tray):
         self.tray = tray
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
         self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle("Gitart")
+        self.main_window.setWindowTitle('Gitart')
         self.window = QWidget()
         self.update_button = QPushButton()
         icon = QIcon('img/dart.png')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.api = api
         self.notifications_scroll_area = QScrollArea()
         self.tasks_scroll_area = QScrollArea()
         self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.notifications_scroll_area, 'Новые задачи')
-        self.tab_widget.addTab(self.tasks_scroll_area, 'Назначено вам')
+        self.tab_widget.addTab(self.notifications_scroll_area, "Новые задачи")
+        self.tab_widget.addTab(self.tasks_scroll_area, "Назначено вам")
         self.tab_widget.tabBarClicked.connect(self.controller_tab_clicked)
         self.layout.addWidget(self.tab_widget)
         self.window.resize(825, 825)
@@ -213,7 +215,7 @@ class MainWindowTasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
                 else assigned_task['title']
             assigned_task['task_id'] = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            assigned_task['body'] = "{}#{} открыта {} {}.".format(assigned_task['full_name'], assigned_task['task_id'],
+            assigned_task['body'] = '{}#{} открыта {} {}.'.format(assigned_task['full_name'], assigned_task['task_id'],
                                                                   assigned_task['created_at'], assigned_task['creator'])
             assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60\
                 else assigned_task['body']
@@ -232,8 +234,8 @@ class MainWindowTasks:
             get_ending_by_number(len(assigned_to_you_tasks), ['а', 'ы', 'о']),
             len(assigned_to_you_tasks),
             get_ending_by_number(len(assigned_to_you_tasks), ['а', 'и', ''])))
-        label.setStyleSheet("font-size:24px;")
-        button = QPushButton("Обновить")
+        label.setStyleSheet('font-size:24px;')
+        button = QPushButton('Обновить')
         button.clicked.connect(self.create_window_tasks)
         layout.addWidget(label)
         layout.addWidget(button)
@@ -253,11 +255,11 @@ class MainWindowTasks:
             layout.addWidget(label)
             label = QLabel(assigned_to_you['milestone_title'])
             layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace("http://", '')))
+            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace('http://', '')))
             open_tasks = self.open_url(assigned_to_you['url'])
             button.clicked.connect(open_tasks)
-            button.setStyleSheet("font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
-                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
+            button.setStyleSheet("""font-size:12px; color: #23619e; background: rgba(255,255,255,0);
+                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left""")
             layout.addWidget(button)
             layout_message.addWidget(div)
             y += 1
@@ -275,7 +277,7 @@ class MainWindowTasks:
     def create_notification_title(notification):
         layout = QHBoxLayout()
         label = QLabel('Репозиторий:')
-        label.setStyleSheet('color: #808080;')
+        label.setStyleSheet("color: #808080;")
         layout.addWidget(label)
         repo = notification['full_name']
         layout.addWidget(QLabel("{}, ".format(repo)))
@@ -288,12 +290,12 @@ class MainWindowTasks:
             label.setStyleSheet('color: #808080;')
             layout.addWidget(label)
             label = QLabel()
-            pixmap = QtGui.QPixmap("img/{}.jpg".format(notification['user_avatar_name']))
+            pixmap = QtGui.QPixmap('img/{}.jpg'.format(notification['user_avatar_name']))
             label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
-            label.setStyleSheet("margin:0; padding:0")
+            label.setStyleSheet('margin:0; padding:0;')
             layout.addWidget(label)
             layout.addWidget(label)
-            layout.addWidget(QLabel("{}.".format(notification['user_login'])))
+            layout.addWidget(QLabel('{}.'.format(notification['user_login'])))
         layout.addStretch()
         return layout
 
@@ -305,11 +307,11 @@ class MainWindowTasks:
         label = QLabel("Не прочитано - {} сообщен{}.".format(
             len(notifications),
             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setStyleSheet("font-size:24px;")
+        label.setStyleSheet('font-size:24px;')
         main_layout.addWidget(label)
         layout = QHBoxLayout()
-        self.update_button = QPushButton("Обновить")
-        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
+        self.update_button = QPushButton('Обновить')
+        self.update_button.setStyleSheet('max-width:75px; min-width:75px;')
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
         label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
@@ -370,7 +372,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            self.tray.tray.showMessage('Подключение к серверу', "Установлено", QIcon('img/dart.png'))
+            self.tray.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
             self.tray.set_icon('img/dart.png')
             self.tray.constructor_menu()
             self.there_connection = True
@@ -384,14 +386,14 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get("{}".format(self.__server), verify=False, timeout=1)
+            requests.get('{}'.format(self.__server), verify=False, timeout=1)
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             if not self.first_connection:
-                self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
+                self.tray.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
             self.first_connection = False
             self.there_connection = False
             self.tray.tray.setIcon(icon)
@@ -412,7 +414,7 @@ class Api:
 
     def get_issues(self):
         if self.check_connection_server():
-            response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
+            response = requests.get("{}/api/v1/repos/issues/search?access_token={}&limit=100".format(self.__server,
                                                                                                      self.__access_token))
             logging.debug("Получение задач")
             return response
@@ -436,9 +438,9 @@ class Api:
             logging.debug("Обращение к Api для получение информацию о своей учетной записи")
             return response
 
-    def update_access_token(self):
+    def update_access_token(self, token):
         logging.debug("Перезапись токена доступа")
-        self.__access_token = data_base.get_user()['token']
+        self.__access_token = token
 
     @property
     def get_access_token(self):
@@ -448,9 +450,8 @@ class Api:
     def get_server(self):
         return self.__server
 
-    def update_server(self):
+    def update_server(self, server):
         self.first_connection = True
-        server = data_base.get_user()['server']
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
@@ -464,18 +465,16 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token = self.lineEdit
         self.edit_server = self.lineEdit_2
         self.edit_server.setInputMask(r'\http{}'.format('x' * 20))
-        self.edit_delay_notification = self.lineEdit_3
 
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
-        self.label_4.setPixmap(QtGui.QPixmap("img/dart.png"))
+        self.label_4.setPixmap(QtGui.QPixmap('img/dart.png'))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
         read_data = data_base.get_user()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
-        self.edit_delay_notification.setText(str(read_data.get('delay', '')))
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
@@ -492,16 +491,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         if not self.tray_icon.user_logged:
             self.edit_token.setText(data_base.get_user()['token'])
         data_base.update_user({'token': "'{}'".format(self.edit_token.text()),
-                           'server': "'{}'".format(self.edit_server.text())})
-        self.tray_icon.api.update_server()
-        self.tray_icon.api.update_access_token()
-        if not self.edit_delay_notification.text().isdigit():
-            self.edit_delay_notification.setText('45')
-        if float(self.edit_delay_notification.text()) > 0:
-            data_base.update_user({'delay': self.edit_delay_notification.text()})
-            if self.tray_icon.timer_subscribe_notifications.isActive():
-                self.tray_icon.timer_subscribe_notifications.stop()
-                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.text()) * 1000))
+                              'server': "'{}'".format(self.edit_server.text())})
         self.tray_icon.constructor_menu()
         self.hide()
 
@@ -529,9 +519,8 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        self.id_exist_messages = []
-        self.api = Api(self, data_base.get_user()['server'], data_base.get_user()['token'])
-        self.window_tasks = MainWindowTasks(self.api, self)
+        self.exist_messages = data_base.get_notifications()
+        self.window_tasks = MainWindowTasks(self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
         self.timer_subscribe_notifications = QtCore.QTimer()
@@ -539,33 +528,30 @@ class TrayIcon:
 
     def output_in_tray_data_about_tasks(self, notifications):
         for notification in notifications:
-            if notification['subject']['state'] == 'closed':
-                message = 'репозиторий закрыт'
-            elif not (notification['subject']['latest_comment_url'] == ''):
-                id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                                ['latest_comment_url']))[0].replace('comments/', '')
-                try:
-                    message = "\n'Новое сообщение:{}'".format(json.loads(self.api.get_comment(id_comments).text)['body'])
-                except json.decoder.JSONDecodeError:
-                    message = 'Репозиторий открыт'
+            if notification['state'] == 'closed':
+                message = "репозиторий закрыт"
+            elif not (notification['message'] == ''):
+                message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Репозиторий открыт"
-            self.tray.showMessage(notification['subject']['title'], message, QIcon('img/notification.png'))
+            self.tray.showMessage(notification['title'], message, QIcon('img/notification.png'))
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
-        notifications = json.loads(self.api.get_notifications().text)
+        notifications = data_base.get_notifications()
         change_notifications = []
         new_notifications = []
         for notification in notifications:
             if_exist = False
             new_notifications.append(notification)
-            for id_exist_message in self.id_exist_messages:
-                if id_exist_message == notification:
+            for exist_message in self.exist_messages:
+                if exist_message['created_time'] == notification['created_time'] and \
+                        exist_message['message'] == notification['message']:
                     if_exist = True
+                    break
             if not if_exist:
                 change_notifications.append(notification)
-        self.id_exist_messages = new_notifications
+        self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
@@ -578,7 +564,7 @@ class TrayIcon:
             self.set_icon("img/{}.jpg".format(str(data_base.get_user()['id'])))
             self.status_animation = 1
         else:
-            self.set_icon('img/notification.png')
+            self.set_icon("img/notification.png")
             self.status_animation = 0
 
     def show_notification(self):
@@ -630,9 +616,9 @@ class TrayIcon:
         self.menu.addAction(name_user)
         self.menu_items.append(name_user)
         download_icon(user['avatar_url'], data_base.get_user()['id'])
-        self.set_icon("img/{}.jpg".format(str(user['id'])))
+        self.set_icon('img/{}.jpg'.format(str(user['id'])))
         logout = self.logout
-        login = QAction('Выйти из {}'.format(user["login"]))
+        login = QAction('Выйти из {}'.format(user['login']))
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
@@ -641,7 +627,7 @@ class TrayIcon:
             self.timer_update_tool_tip.start(1000)
         read_data = data_base.get_user()
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
+            self.timer_subscribe_notifications.start(1000)
 
     def constructor_menu(self):
         self.tray.setToolTip("Необходима авторизация через токен")
@@ -651,8 +637,8 @@ class TrayIcon:
         self.menu.addAction(name_aplication)
         self.menu_items.append(name_aplication)
         try:
-            if self.api.there_connection:
-                update_user(json.loads(self.api.get_user().text))
+            if data_base.get_there_connection():
+                data_base.get_user_data_from_api()
         except (json.decoder.JSONDecodeError, AttributeError):
             self.tray.setToolTip("Подключение к серверу отсуствует")
             logging.debug("Подключение к серверу отсуствует")
@@ -660,12 +646,12 @@ class TrayIcon:
             self.tray.setToolTip("Введите адрес сервера")
         self.menu_items = []
         self.menu = QMenu()
-        if self.api.there_connection and not (data_base.get_user()['full_name']
-                                              is None or data_base.get_user()['full_name'] == 'NULL'):
+        if data_base.get_there_connection() and not (data_base.get_user()['full_name'] is None
+                                                     or data_base.get_user()['full_name'] == 'NULL'):
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
-        auth = QAction("Настройки")
+        auth = QAction('Настройки')
         def_setting = self.create_settings_window
         auth.triggered.connect(def_setting)
         self.menu.addAction(auth)
@@ -689,17 +675,17 @@ class TrayIcon:
         self.timer_update_tool_tip.stop()
         self.window_tasks.main_window.close()
         data_base.update_user({'token': 'null'})
-        self.api.update_access_token()
         self.set_icon('img/dart.png')
         self.user_logged = True
-        self.tray.showMessage('Авторизация', "Снята", QIcon('img/dart.png'))
+        self.tray.showMessage('Авторизация', 'Снята', QIcon('img/dart.png'))
         self.constructor_menu()
 
 
+data_base = DataBase()
+data_base.start()
+
+
 def main():
-    global data_base
-    data_base = DataBase()
-    data_base.start()
     logging.getLogger('urllib3').setLevel(logging.WARNING)
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
@@ -715,7 +701,6 @@ def main():
     app.setWindowIcon(QIcon('./img/dart.png'))
     app.setQuitOnLastWindowClosed(False)
     tray_icon = TrayIcon('img/dart.png', app)
-    data_base.set_api(tray_icon.api)
     tray_icon.constructor_menu()
     app.exec_()
 
