@@ -465,7 +465,6 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token = self.lineEdit
         self.edit_server = self.lineEdit_2
         self.edit_server.setInputMask(r'\http{}'.format('x' * 20))
-        self.edit_delay_notification = self.lineEdit_3
 
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
@@ -476,7 +475,6 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         read_data = data_base.get_user()
         self.edit_token.setText(read_data.get('token', ''))
         self.edit_server.setText(read_data.get('server', ''))
-        self.edit_delay_notification.setText(str(read_data.get('delay', '')))
         logging.debug("Показ окна настроек")
         self.show()
         screen_geometry = QApplication.desktop().availableGeometry()
@@ -493,14 +491,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         if not self.tray_icon.user_logged:
             self.edit_token.setText(data_base.get_user()['token'])
         data_base.update_user({'token': "'{}'".format(self.edit_token.text()),
-                           'server': "'{}'".format(self.edit_server.text())})
-        if not self.edit_delay_notification.text().isdigit():
-            self.edit_delay_notification.setText('45')
-        if float(self.edit_delay_notification.text()) > 0:
-            data_base.update_user({'delay': self.edit_delay_notification.text()})
-            if self.tray_icon.timer_subscribe_notifications.isActive():
-                self.tray_icon.timer_subscribe_notifications.stop()
-                self.tray_icon.timer_subscribe_notifications.start(int(float(self.edit_delay_notification.text()) * 1000))
+                              'server': "'{}'".format(self.edit_server.text())})
         self.tray_icon.constructor_menu()
         self.hide()
 
@@ -636,7 +627,7 @@ class TrayIcon:
             self.timer_update_tool_tip.start(1000)
         read_data = data_base.get_user()
         if not(self.timer_subscribe_notifications.isActive()):
-            self.timer_subscribe_notifications.start(int(float(read_data.get('delay', '45')) * 1000))
+            self.timer_subscribe_notifications.start(1000)
 
     def constructor_menu(self):
         self.tray.setToolTip("Необходима авторизация через токен")
