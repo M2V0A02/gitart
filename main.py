@@ -26,13 +26,13 @@ def download_icon(url, name):
     resource = requests.get(url)
     if not (os.path.exists('img')):
         os.mkdir('img')
-    with open("img/{}.jpg".format(name), "wb") as out:
+    with open("img/{}.jpg".format(name), 'wb') as out:
         out.write(resource.content)
 
 
 def formatting_the_date(string_date):
     try:
-        string_date = datetime.datetime.strptime(string_date, '%Y-%m-%dT%H:%M:%SZ')
+        string_date = datetime.datetime.strptime(string_date, "%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
         return ''
     timezone = str(datetime.datetime.now(datetime.timezone.utc).astimezone())
@@ -71,7 +71,7 @@ def save_notifications(api, notifications, table):
             try:
                 repo = json.loads(api.get_repos_issues(repo, issues).text)
                 user_login = "'{}'".format(repo['user']['login'])
-                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ""))
+                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ''))
                 download_icon(repo['user']['avatar_url'], user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
@@ -87,7 +87,7 @@ def save_assigned_tasks(api, assigned_tasks, table):
     assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, json.loads(api.get_user().text))
     for assigned_to_you_task in assigned_to_you_tasks:
         title = "'{}'".format(assigned_to_you_task['title'])
-        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace('/issues/', '')
+        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace("/issues/", '')
         full_name = "'{}'".format(assigned_to_you_task['repository']['full_name'])
         created_time = "'{}'".format(formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y'))
         creator = "'{}'".format(assigned_to_you_task['user']['login'])
@@ -108,7 +108,7 @@ def update_user(api):
 
 def crash_script(error_type, value, tb):
     traces = traceback.extract_tb(tb)
-    critical_error = "{}: {},  \n".format(error_type, value)
+    critical_error = '{}: {},  \n'.format(error_type, value)
     for frame_summary in traces:
         critical_error += "{:24}File '{}', line {}, in {}, \n{:24} {} \n".format('', frame_summary.filename,
                                                                                  frame_summary.lineno,
@@ -146,10 +146,10 @@ class DataBase(QThread):
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
                 if self.api is not None:
-                        save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
-                        save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
-                        self.last_notifications = self.table_notifications.get_all()
-                        self.last_assigned_tasks = self.table_assigned_tasks.get_all()
+                    save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
+                    save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
+                    self.last_notifications = self.table_notifications.get_all()
+                    self.last_assigned_tasks = self.table_assigned_tasks.get_all()
 
     def get_notifications(self):
         return self.last_notifications
@@ -183,7 +183,7 @@ class MainWindowTasks:
         self.main_window = QMainWindow()
         self.scroll = QScrollArea(self.main_window)
         self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle("Gitart")
+        self.main_window.setWindowTitle('Gitart')
         self.window = QWidget()
         self.update_button = QPushButton()
         icon = QIcon('img/dart.png')
@@ -192,8 +192,8 @@ class MainWindowTasks:
         self.notifications_scroll_area = QScrollArea()
         self.tasks_scroll_area = QScrollArea()
         self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.notifications_scroll_area, 'Новые задачи')
-        self.tab_widget.addTab(self.tasks_scroll_area, 'Назначено вам')
+        self.tab_widget.addTab(self.notifications_scroll_area, "Новые задачи")
+        self.tab_widget.addTab(self.tasks_scroll_area, "Назначено вам")
         self.tab_widget.tabBarClicked.connect(self.controller_tab_clicked)
         self.layout.addWidget(self.tab_widget)
         self.window.resize(825, 825)
@@ -215,7 +215,7 @@ class MainWindowTasks:
             assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
                 else assigned_task['title']
             assigned_task['task_id'] = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            assigned_task['body'] = "{}#{} открыта {} {}.".format(assigned_task['full_name'], assigned_task['task_id'],
+            assigned_task['body'] = '{}#{} открыта {} {}.'.format(assigned_task['full_name'], assigned_task['task_id'],
                                                                   assigned_task['created_at'], assigned_task['creator'])
             assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60\
                 else assigned_task['body']
@@ -234,8 +234,8 @@ class MainWindowTasks:
             get_ending_by_number(len(assigned_to_you_tasks), ['а', 'ы', 'о']),
             len(assigned_to_you_tasks),
             get_ending_by_number(len(assigned_to_you_tasks), ['а', 'и', ''])))
-        label.setStyleSheet("font-size:24px;")
-        button = QPushButton("Обновить")
+        label.setStyleSheet('font-size:24px;')
+        button = QPushButton('Обновить')
         button.clicked.connect(self.create_window_tasks)
         layout.addWidget(label)
         layout.addWidget(button)
@@ -255,11 +255,11 @@ class MainWindowTasks:
             layout.addWidget(label)
             label = QLabel(assigned_to_you['milestone_title'])
             layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace("http://", '')))
+            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace('http://', '')))
             open_tasks = self.open_url(assigned_to_you['url'])
             button.clicked.connect(open_tasks)
-            button.setStyleSheet("font-size:12px; color: #23619e; background: rgba(255,255,255,0);"
-                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left")
+            button.setStyleSheet("""font-size:12px; color: #23619e; background: rgba(255,255,255,0);
+                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left""")
             layout.addWidget(button)
             layout_message.addWidget(div)
             y += 1
@@ -277,7 +277,7 @@ class MainWindowTasks:
     def create_notification_title(notification):
         layout = QHBoxLayout()
         label = QLabel('Репозиторий:')
-        label.setStyleSheet('color: #808080;')
+        label.setStyleSheet("color: #808080;")
         layout.addWidget(label)
         repo = notification['full_name']
         layout.addWidget(QLabel("{}, ".format(repo)))
@@ -290,12 +290,12 @@ class MainWindowTasks:
             label.setStyleSheet('color: #808080;')
             layout.addWidget(label)
             label = QLabel()
-            pixmap = QtGui.QPixmap("img/{}.jpg".format(notification['user_avatar_name']))
+            pixmap = QtGui.QPixmap('img/{}.jpg'.format(notification['user_avatar_name']))
             label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
-            label.setStyleSheet("margin:0; padding:0")
+            label.setStyleSheet('margin:0; padding:0;')
             layout.addWidget(label)
             layout.addWidget(label)
-            layout.addWidget(QLabel("{}.".format(notification['user_login'])))
+            layout.addWidget(QLabel('{}.'.format(notification['user_login'])))
         layout.addStretch()
         return layout
 
@@ -307,11 +307,11 @@ class MainWindowTasks:
         label = QLabel("Не прочитано - {} сообщен{}.".format(
             len(notifications),
             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setStyleSheet("font-size:24px;")
+        label.setStyleSheet('font-size:24px;')
         main_layout.addWidget(label)
         layout = QHBoxLayout()
-        self.update_button = QPushButton("Обновить")
-        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
+        self.update_button = QPushButton('Обновить')
+        self.update_button.setStyleSheet('max-width:75px; min-width:75px;')
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
         label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
@@ -372,7 +372,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            self.tray.tray.showMessage('Подключение к серверу', "Установлено", QIcon('img/dart.png'))
+            self.tray.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
             self.tray.set_icon('img/dart.png')
             self.tray.constructor_menu()
             self.there_connection = True
@@ -386,14 +386,14 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get("{}".format(self.__server), verify=False, timeout=1)
+            requests.get('{}'.format(self.__server), verify=False, timeout=1)
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             if not self.first_connection:
-                self.tray.tray.showMessage('Подключение к серверу', "Прервано", QIcon('img/connection_lost.png'))
+                self.tray.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
             self.first_connection = False
             self.there_connection = False
             self.tray.tray.setIcon(icon)
@@ -414,7 +414,7 @@ class Api:
 
     def get_issues(self):
         if self.check_connection_server():
-            response = requests.get('{}/api/v1/repos/issues/search?access_token={}&limit=100'.format(self.__server,
+            response = requests.get("{}/api/v1/repos/issues/search?access_token={}&limit=100".format(self.__server,
                                                                                                      self.__access_token))
             logging.debug("Получение задач")
             return response
@@ -468,7 +468,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 
     def my_show(self):
         self.setFixedSize(self.width(), self.height())
-        self.label_4.setPixmap(QtGui.QPixmap("img/dart.png"))
+        self.label_4.setPixmap(QtGui.QPixmap('img/dart.png'))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
         self.pushButton_2.clicked.connect(self.hide)
@@ -529,7 +529,7 @@ class TrayIcon:
     def output_in_tray_data_about_tasks(self, notifications):
         for notification in notifications:
             if notification['state'] == 'closed':
-                message = 'репозиторий закрыт'
+                message = "репозиторий закрыт"
             elif not (notification['message'] == ''):
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
@@ -564,7 +564,7 @@ class TrayIcon:
             self.set_icon("img/{}.jpg".format(str(data_base.get_user()['id'])))
             self.status_animation = 1
         else:
-            self.set_icon('img/notification.png')
+            self.set_icon("img/notification.png")
             self.status_animation = 0
 
     def show_notification(self):
@@ -616,9 +616,9 @@ class TrayIcon:
         self.menu.addAction(name_user)
         self.menu_items.append(name_user)
         download_icon(user['avatar_url'], data_base.get_user()['id'])
-        self.set_icon("img/{}.jpg".format(str(user['id'])))
+        self.set_icon('img/{}.jpg'.format(str(user['id'])))
         logout = self.logout
-        login = QAction('Выйти из {}'.format(user["login"]))
+        login = QAction('Выйти из {}'.format(user['login']))
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
@@ -651,7 +651,7 @@ class TrayIcon:
             self.authentication_successful()
         else:
             logging.debug("TrayIcon: Токена доступа нет или он недействителен")
-        auth = QAction("Настройки")
+        auth = QAction('Настройки')
         def_setting = self.create_settings_window
         auth.triggered.connect(def_setting)
         self.menu.addAction(auth)
@@ -677,7 +677,7 @@ class TrayIcon:
         data_base.update_user({'token': 'null'})
         self.set_icon('img/dart.png')
         self.user_logged = True
-        self.tray.showMessage('Авторизация', "Снята", QIcon('img/dart.png'))
+        self.tray.showMessage('Авторизация', 'Снята', QIcon('img/dart.png'))
         self.constructor_menu()
 
 
