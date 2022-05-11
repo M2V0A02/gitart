@@ -150,7 +150,6 @@ class DataBase(QThread):
                         save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
                         self.last_notifications = self.table_notifications.get_all()
                         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                time.sleep(1)
 
     def get_notifications(self):
         return self.last_notifications
@@ -529,7 +528,7 @@ class TrayIcon:
         self.user_logged = True
         self.notifications = []
         self.setting = Setting(self)
-        self.id_exist_messages = []
+        self.exist_messages = data_base.get_notifications()
         self.window_tasks = MainWindowTasks(self)
         self.timer_animation = QtCore.QTimer()
         self.timer_animation.timeout.connect(self.animation)
@@ -554,12 +553,14 @@ class TrayIcon:
         for notification in notifications:
             if_exist = False
             new_notifications.append(notification)
-            for id_exist_message in self.id_exist_messages:
-                if id_exist_message == notification:
+            for exist_message in self.exist_messages:
+                if exist_message['created_time'] == notification['created_time'] and \
+                        exist_message['message'] == notification['message']:
                     if_exist = True
+                    break
             if not if_exist:
                 change_notifications.append(notification)
-        self.id_exist_messages = new_notifications
+        self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
