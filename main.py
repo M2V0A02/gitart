@@ -13,6 +13,7 @@ import datetime
 import webbrowser
 import re
 import UI.setting_ui as setting_ui
+import UI.main_window_ui as main_window_ui
 import my_sql_lite
 from PyQt5.QtWinExtras import QtWin
 from PyQt5.QtCore import QThread
@@ -145,11 +146,13 @@ class DataBase(QThread):
                 logging.debug("Проверка новых сообщений")
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
-                if self.api is not None:
+                try:
                     save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
                     save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
                     self.last_notifications = self.table_notifications.get_all()
                     self.last_assigned_tasks = self.table_assigned_tasks.get_all()
+                except:
+                    logging.error("Нарушение потока")
 
     def get_notifications(self):
         return self.last_notifications
@@ -176,118 +179,31 @@ class DataBase(QThread):
         return self.api.there_connection
 
 
-class MainWindowTasks:
+class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
 
     def __init__(self, tray):
         self.tray = tray
-        self.main_window = QMainWindow()
-        self.scroll = QScrollArea(self.main_window)
-        self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle('Gitart')
-        self.window = QWidget()
-        self.update_button = QPushButton()
+        super().__init__()
+        self.setupUi(self)
+        self.setWindowTitle('Gitart')
         icon = QIcon('img/dart.png')
-        self.main_window.setWindowIcon(icon)
-        self.layout = QVBoxLayout()
-        self.notifications_scroll_area = QScrollArea()
-        self.tasks_scroll_area = QScrollArea()
-        self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.notifications_scroll_area, "Новые задачи")
-        self.tab_widget.addTab(self.tasks_scroll_area, "Назначено вам")
-        self.tab_widget.tabBarClicked.connect(self.controller_tab_clicked)
-        self.layout.addWidget(self.tab_widget)
-        self.window.resize(825, 825)
-        self.window.setLayout(self.layout)
-        self.scroll.setWidget(self.window)
-        self.scroll.resize(830, 830)
-
-    def controller_tab_clicked(self, number_tab):
-        controller = {
-            0: self.create_window_notification(),
-            1: self.create_window_tasks()
-        }
-        controller[number_tab]
-
-    @staticmethod
-    def get_assigned_to_you_tasks():
-        assigned_tasks = data_base.get_assigned_tasks()
-        for assigned_task in assigned_tasks:
-            assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
-                else assigned_task['title']
-            assigned_task['task_id'] = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            assigned_task['body'] = '{}#{} открыта {} {}.'.format(assigned_task['full_name'], assigned_task['task_id'],
-                                                                  assigned_task['created_at'], assigned_task['creator'])
-            assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60\
-                else assigned_task['body']
-            if not (assigned_task['milestone_title'] is None):
-                name_title = "Этап: {}".format(assigned_task['milestone_title'])
-                name_title = '{:.47}...'.format(name_title) if len(name_title) > 50 else name_title
-                assigned_task['milestone_title'] = name_title
-        return assigned_tasks
-
-    def create_window_tasks(self):
-        widget = QWidget()
-        main_layout = QVBoxLayout()
-        layout = QHBoxLayout()
-        assigned_to_you_tasks = self.get_assigned_to_you_tasks()
-        label = QLabel('Вам назначен{} - {} задач{}.'.format(
-            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'ы', 'о']),
-            len(assigned_to_you_tasks),
-            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'и', ''])))
-        label.setStyleSheet('font-size:24px;')
-        button = QPushButton('Обновить')
-        button.clicked.connect(self.create_window_tasks)
-        layout.addWidget(label)
-        layout.addWidget(button)
-        main_layout.addLayout(layout)
-        number_of_messages_per_line = 2
-        layout_message = QHBoxLayout()
-        y = 0
-        for assigned_to_you in assigned_to_you_tasks:
-            label = QLabel(assigned_to_you['title'])
-            label.setStyleSheet("font-size:18px;")
-            div = QWidget()
-            layout = QVBoxLayout(div)
-            div.setStyleSheet("margin-left:15px; width:345px;")
-            layout.addWidget(label)
-            label = QLabel(assigned_to_you['body'])
-            label.setStyleSheet("font-size:12px;")
-            layout.addWidget(label)
-            label = QLabel(assigned_to_you['milestone_title'])
-            layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace('http://', '')))
-            open_tasks = self.open_url(assigned_to_you['url'])
-            button.clicked.connect(open_tasks)
-            button.setStyleSheet("""font-size:12px; color: #23619e; background: rgba(255,255,255,0);
-                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left""")
-            layout.addWidget(button)
-            layout_message.addWidget(div)
-            y += 1
-            if y % number_of_messages_per_line == 0:
-                main_layout.addLayout(layout_message)
-                layout_message = QHBoxLayout()
-        if not (y + 1 % number_of_messages_per_line == 0):
-            main_layout.addLayout(layout_message)
-        main_layout.addStretch()
-        widget.setLayout(main_layout)
-        self.tasks_scroll_area.setWidget(widget)
-        self.tab_widget.update()
+        self.setWindowIcon(icon)
 
     @staticmethod
     def create_notification_title(notification):
         layout = QHBoxLayout()
         label = QLabel('Репозиторий:')
-        label.setStyleSheet("color: #808080;")
+        label.setStyleSheet("color: #6957A1;")
         layout.addWidget(label)
         repo = notification['full_name']
         layout.addWidget(QLabel("{}, ".format(repo)))
-        label = QLabel('дата создания:')
-        label.setStyleSheet('color: #808080;')
+        label = QLabel('Дата создания:')
+        label.setStyleSheet('color: #6957A1;')
         layout.addWidget(label)
         layout.addWidget(QLabel("{}, ".format(notification['created_time'])))
         if not (notification['user_login'] is None):
-            label = QLabel('пользователь: ')
-            label.setStyleSheet('color: #808080;')
+            label = QLabel('Пользователь: ')
+            label.setStyleSheet('color: #6957A1;')
             layout.addWidget(label)
             label = QLabel()
             pixmap = QtGui.QPixmap('img/{}.jpg'.format(notification['user_avatar_name']))
@@ -304,19 +220,17 @@ class MainWindowTasks:
         notifications = data_base.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
-        label = QLabel("Не прочитано - {} сообщен{}.".format(
+        label = QLabel("Не прочитано - {} сообщен{}".format(
             len(notifications),
             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setStyleSheet('font-size:24px;')
+        label.setAlignment(QtCore.Qt.AlignCenter|QtCore.Qt.AlignCenter)
+        label.setStyleSheet("font-size:24px; color:#909090")
         main_layout.addWidget(label)
         layout = QHBoxLayout()
         self.update_button = QPushButton('Обновить')
-        self.update_button.setStyleSheet('max-width:75px; min-width:75px;')
+        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
-        label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
-        layout.addWidget(label)
-        main_layout.addLayout(layout)
         layout = QVBoxLayout()
         for notification in notifications:
             layout_notification = QVBoxLayout()
@@ -331,7 +245,7 @@ class MainWindowTasks:
             button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'],
                                                                     notification['number_issues']))
             button.setStyleSheet(
-                """font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:
+                """font-size:12px; color: #337AB7; background: rgba(255,255,255,0); border-radius:
                  .28571429rem; height: 20px; border-color: #dedede; text-align:right; margin:0, 0, 0, 20""")
             button.clicked.connect(open_notification)
             layout_notification.addWidget(button)
@@ -339,16 +253,15 @@ class MainWindowTasks:
             layout.addLayout(layout_notification)
         layout.setSpacing(50)
         group_box.setLayout(layout)
-
         main_layout.addWidget(group_box)
+        main_layout.addStretch()
         widget.setLayout(main_layout)
-        self.notifications_scroll_area.setWidget(widget)
-        self.tab_widget.update()
+        self.scrollArea.setWidget(widget)
 
-    def show(self):
-        self.main_window.show()
-        if self.main_window.isMinimized():
-            self.main_window.showNormal()
+    def my_show(self):
+        self.show()
+        if self.isMinimized():
+            self.showNormal()
 
     def update_notifications(self):
         self.create_window_notification()
@@ -510,11 +423,8 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.len_new_notification = 0
-        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
         self.tray.setVisible(True)
         self.menu = QMenu()
-        self.timer_update_tool_tip = QtCore.QTimer()
-        self.timer_update_tool_tip.timeout.connect(self.update_tool_tip)
         self.hint = ''
         self.user_logged = True
         self.notifications = []
@@ -530,7 +440,7 @@ class TrayIcon:
         for notification in notifications:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
-            elif not (notification['message'] == ''):
+            elif not (notification['message'] == '' or notification['message'] == 'None'):
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Репозиторий открыт"
@@ -553,6 +463,7 @@ class TrayIcon:
                 change_notifications.append(notification)
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
+        self.window_tasks.update_notifications()
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         if not len(data_base.get_notifications()) == 0 and not(self.timer_animation.isActive()):
@@ -570,7 +481,7 @@ class TrayIcon:
     def show_notification(self):
         if not len(data_base.get_notifications()) == 0:
             self.window_tasks.create_window_notification()
-            self.window_tasks.show()
+            self.window_tasks.my_show()
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and not self.user_logged:  # Левая кнопка мыши
@@ -583,25 +494,6 @@ class TrayIcon:
         self.name_icon = icon
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
-
-    def update_tool_tip(self):
-        now_delta = datetime.timedelta(minutes=datetime.datetime.today().minute, seconds=datetime.datetime.today().second)
-        past_delta = datetime.timedelta(minutes=self.update_date_time.minute, seconds=self.update_date_time.second)
-        difference = now_delta - past_delta
-        minute_difference = difference.seconds // 60
-        second_difference = difference.seconds % 60
-        if not minute_difference == 0:
-            minute = "{} минут{}".format(minute_difference, get_ending_by_number(minute_difference, ['а', 'ы', '']))
-        else:
-            minute = ''
-        if not second_difference == 0:
-            second = "{} секунд{}".format(second_difference, get_ending_by_number(second_difference, ['а', 'ы', '']))
-        else:
-            second = ''
-
-        self.tray.setToolTip("Вам назначенно {} задач{}. Обновлено - {} {} назад"
-                             .format(self.len_new_notification, get_ending_by_number(self.len_new_notification, ['а', 'и', '']),
-                                     minute, second))
 
     def authentication_successful(self):
         data_base.set_authorisation(True)
@@ -622,10 +514,6 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
-        if not(self.timer_animation.isActive()):
-            self.timer_update_tool_tip.start(1000)
-        read_data = data_base.get_user()
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(1000)
 
@@ -672,8 +560,8 @@ class TrayIcon:
         data_base.set_authorisation(False)
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
-        self.timer_update_tool_tip.stop()
-        self.window_tasks.main_window.close()
+        self.window_tasks.close()
+        time.sleep(1)
         data_base.update_user({'token': 'null'})
         self.set_icon('img/dart.png')
         self.user_logged = True
