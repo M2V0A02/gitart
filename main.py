@@ -146,11 +146,13 @@ class DataBase(QThread):
                 logging.debug("Проверка новых сообщений")
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
-                if self.api is not None:
+                try:
                     save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
                     save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
                     self.last_notifications = self.table_notifications.get_all()
                     self.last_assigned_tasks = self.table_assigned_tasks.get_all()
+                except:
+                    logging.error("Нарушение потока")
 
     def get_notifications(self):
         return self.last_notifications
@@ -421,11 +423,8 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
         self.len_new_notification = 0
-        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
         self.tray.setVisible(True)
         self.menu = QMenu()
-        self.timer_update_tool_tip = QtCore.QTimer()
-        self.timer_update_tool_tip.timeout.connect(self.update_tool_tip)
         self.hint = ''
         self.user_logged = True
         self.notifications = []
@@ -496,25 +495,6 @@ class TrayIcon:
         self.icon = QIcon(icon)
         self.tray.setIcon(self.icon)
 
-    def update_tool_tip(self):
-        now_delta = datetime.timedelta(minutes=datetime.datetime.today().minute, seconds=datetime.datetime.today().second)
-        past_delta = datetime.timedelta(minutes=self.update_date_time.minute, seconds=self.update_date_time.second)
-        difference = now_delta - past_delta
-        minute_difference = difference.seconds // 60
-        second_difference = difference.seconds % 60
-        if not minute_difference == 0:
-            minute = "{} минут{}".format(minute_difference, get_ending_by_number(minute_difference, ['а', 'ы', '']))
-        else:
-            minute = ''
-        if not second_difference == 0:
-            second = "{} секунд{}".format(second_difference, get_ending_by_number(second_difference, ['а', 'ы', '']))
-        else:
-            second = ''
-
-        self.tray.setToolTip("Вам назначенно {} задач{}. Обновлено - {} {} назад"
-                             .format(self.len_new_notification, get_ending_by_number(self.len_new_notification, ['а', 'и', '']),
-                                     minute, second))
-
     def authentication_successful(self):
         data_base.set_authorisation(True)
         user = data_base.get_user()
@@ -534,9 +514,6 @@ class TrayIcon:
         login.triggered.connect(logout)
         self.menu.addAction(login)
         self.menu_items.append(login)
-        self.update_date_time = datetime.datetime.time(datetime.datetime.today())
-        if not(self.timer_animation.isActive()):
-            self.timer_update_tool_tip.start(1000)
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(1000)
 
@@ -583,8 +560,8 @@ class TrayIcon:
         data_base.set_authorisation(False)
         self.timer_animation.stop()
         self.timer_subscribe_notifications.stop()
-        self.timer_update_tool_tip.stop()
-        self.window_tasks.main_window.close()
+        self.window_tasks.close()
+        time.sleep(1)
         data_base.update_user({'token': 'null'})
         self.set_icon('img/dart.png')
         self.user_logged = True
