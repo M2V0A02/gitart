@@ -189,89 +189,11 @@ class MainWindowTasks:
         icon = QIcon('img/dart.png')
         self.main_window.setWindowIcon(icon)
         self.layout = QVBoxLayout()
-        self.notifications_scroll_area = QScrollArea()
-        self.tasks_scroll_area = QScrollArea()
-        self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.notifications_scroll_area, "Новые задачи")
-        self.tab_widget.addTab(self.tasks_scroll_area, "Назначено вам")
-        self.tab_widget.tabBarClicked.connect(self.controller_tab_clicked)
-        self.layout.addWidget(self.tab_widget)
         self.window.resize(825, 825)
         self.window.setLayout(self.layout)
         self.scroll.setWidget(self.window)
         self.scroll.resize(830, 830)
-
-    def controller_tab_clicked(self, number_tab):
-        controller = {
-            0: self.create_window_notification(),
-            1: self.create_window_tasks()
-        }
-        controller[number_tab]
-
-    @staticmethod
-    def get_assigned_to_you_tasks():
-        assigned_tasks = data_base.get_assigned_tasks()
-        for assigned_task in assigned_tasks:
-            assigned_task['title'] = '{:.47}...'.format(assigned_tasks['title']) if len(assigned_tasks) > 50\
-                else assigned_task['title']
-            assigned_task['task_id'] = re.search(r'/issues/.+', assigned_task['url'])[0].replace('/issues/', '')
-            assigned_task['body'] = '{}#{} открыта {} {}.'.format(assigned_task['full_name'], assigned_task['task_id'],
-                                                                  assigned_task['created_at'], assigned_task['creator'])
-            assigned_task['body'] = '{:.57}...'.format(assigned_task['body']) if len(assigned_task['body']) > 60\
-                else assigned_task['body']
-            if not (assigned_task['milestone_title'] is None):
-                name_title = "Этап: {}".format(assigned_task['milestone_title'])
-                name_title = '{:.47}...'.format(name_title) if len(name_title) > 50 else name_title
-                assigned_task['milestone_title'] = name_title
-        return assigned_tasks
-
-    def create_window_tasks(self):
-        widget = QWidget()
-        main_layout = QVBoxLayout()
-        layout = QHBoxLayout()
-        assigned_to_you_tasks = self.get_assigned_to_you_tasks()
-        label = QLabel('Вам назначен{} - {} задач{}.'.format(
-            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'ы', 'о']),
-            len(assigned_to_you_tasks),
-            get_ending_by_number(len(assigned_to_you_tasks), ['а', 'и', ''])))
-        label.setStyleSheet('font-size:24px;')
-        button = QPushButton('Обновить')
-        button.clicked.connect(self.create_window_tasks)
-        layout.addWidget(label)
-        layout.addWidget(button)
-        main_layout.addLayout(layout)
-        number_of_messages_per_line = 2
-        layout_message = QHBoxLayout()
-        y = 0
-        for assigned_to_you in assigned_to_you_tasks:
-            label = QLabel(assigned_to_you['title'])
-            label.setStyleSheet("font-size:18px;")
-            div = QWidget()
-            layout = QVBoxLayout(div)
-            div.setStyleSheet("margin-left:15px; width:345px;")
-            layout.addWidget(label)
-            label = QLabel(assigned_to_you['body'])
-            label.setStyleSheet("font-size:12px;")
-            layout.addWidget(label)
-            label = QLabel(assigned_to_you['milestone_title'])
-            layout.addWidget(label)
-            button = QPushButton("Перейти в {}".format(assigned_to_you['url'].replace('http://', '')))
-            open_tasks = self.open_url(assigned_to_you['url'])
-            button.clicked.connect(open_tasks)
-            button.setStyleSheet("""font-size:12px; color: #23619e; background: rgba(255,255,255,0);
-                                 "border-radius: .28571429rem; height: 20px; border-color: #dedede; text-align:left""")
-            layout.addWidget(button)
-            layout_message.addWidget(div)
-            y += 1
-            if y % number_of_messages_per_line == 0:
-                main_layout.addLayout(layout_message)
-                layout_message = QHBoxLayout()
-        if not (y + 1 % number_of_messages_per_line == 0):
-            main_layout.addLayout(layout_message)
-        main_layout.addStretch()
-        widget.setLayout(main_layout)
-        self.tasks_scroll_area.setWidget(widget)
-        self.tab_widget.update()
+        self.create_window_notification()
 
     @staticmethod
     def create_notification_title(notification):
@@ -339,11 +261,9 @@ class MainWindowTasks:
             layout.addLayout(layout_notification)
         layout.setSpacing(50)
         group_box.setLayout(layout)
-
         main_layout.addWidget(group_box)
         widget.setLayout(main_layout)
-        self.notifications_scroll_area.setWidget(widget)
-        self.tab_widget.update()
+        self.scroll.setWidget(widget)
 
     def show(self):
         self.main_window.show()
