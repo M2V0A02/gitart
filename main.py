@@ -440,7 +440,7 @@ class TrayIcon:
         for notification in notifications:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
-            elif not (notification['message'] == ''):
+            elif not (notification['message'] == '' or notification['message'] == 'None'):
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Репозиторий открыт"
