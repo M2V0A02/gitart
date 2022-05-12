@@ -13,6 +13,7 @@ import datetime
 import webbrowser
 import re
 import UI.setting_ui as setting_ui
+import UI.main_window_ui as main_window_ui
 import my_sql_lite
 from PyQt5.QtWinExtras import QtWin
 from PyQt5.QtCore import QThread
@@ -176,40 +177,31 @@ class DataBase(QThread):
         return self.api.there_connection
 
 
-class MainWindowTasks:
+class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
 
     def __init__(self, tray):
         self.tray = tray
-        self.main_window = QMainWindow()
-        self.scroll = QScrollArea(self.main_window)
-        self.main_window.setFixedSize(830, 830)
-        self.main_window.setWindowTitle('Gitart')
-        self.window = QWidget()
-        self.update_button = QPushButton()
+        super().__init__()
+        self.setupUi(self)
+        self.setWindowTitle('Gitart')
         icon = QIcon('img/dart.png')
-        self.main_window.setWindowIcon(icon)
-        self.layout = QVBoxLayout()
-        self.window.resize(825, 825)
-        self.window.setLayout(self.layout)
-        self.scroll.setWidget(self.window)
-        self.scroll.resize(830, 830)
-        self.create_window_notification()
+        self.setWindowIcon(icon)
 
     @staticmethod
     def create_notification_title(notification):
         layout = QHBoxLayout()
         label = QLabel('Репозиторий:')
-        label.setStyleSheet("color: #808080;")
+        label.setStyleSheet("color: #6957A1;")
         layout.addWidget(label)
         repo = notification['full_name']
         layout.addWidget(QLabel("{}, ".format(repo)))
-        label = QLabel('дата создания:')
-        label.setStyleSheet('color: #808080;')
+        label = QLabel('Дата создания:')
+        label.setStyleSheet('color: #6957A1;')
         layout.addWidget(label)
         layout.addWidget(QLabel("{}, ".format(notification['created_time'])))
         if not (notification['user_login'] is None):
-            label = QLabel('пользователь: ')
-            label.setStyleSheet('color: #808080;')
+            label = QLabel('Пользователь: ')
+            label.setStyleSheet('color: #6957A1;')
             layout.addWidget(label)
             label = QLabel()
             pixmap = QtGui.QPixmap('img/{}.jpg'.format(notification['user_avatar_name']))
@@ -226,19 +218,17 @@ class MainWindowTasks:
         notifications = data_base.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
-        label = QLabel("Не прочитано - {} сообщен{}.".format(
+        label = QLabel("Не прочитано - {} сообщен{}".format(
             len(notifications),
             get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setStyleSheet('font-size:24px;')
+        label.setAlignment(QtCore.Qt.AlignCenter|QtCore.Qt.AlignCenter)
+        label.setStyleSheet("font-size:24px; color:#909090")
         main_layout.addWidget(label)
         layout = QHBoxLayout()
         self.update_button = QPushButton('Обновить')
-        self.update_button.setStyleSheet('max-width:75px; min-width:75px;')
+        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
         self.update_button.clicked.connect(self.update_notifications)
         layout.addWidget(self.update_button)
-        label = QLabel("Последние обновление в {}.".format(datetime.datetime.today().strftime('%H:%M:%S')))
-        layout.addWidget(label)
-        main_layout.addLayout(layout)
         layout = QVBoxLayout()
         for notification in notifications:
             layout_notification = QVBoxLayout()
@@ -253,7 +243,7 @@ class MainWindowTasks:
             button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'],
                                                                     notification['number_issues']))
             button.setStyleSheet(
-                """font-size:12px; color: #23619e; background: rgba(255,255,255,0); border-radius:
+                """font-size:12px; color: #337AB7; background: rgba(255,255,255,0); border-radius:
                  .28571429rem; height: 20px; border-color: #dedede; text-align:right; margin:0, 0, 0, 20""")
             button.clicked.connect(open_notification)
             layout_notification.addWidget(button)
@@ -262,16 +252,18 @@ class MainWindowTasks:
         layout.setSpacing(50)
         group_box.setLayout(layout)
         main_layout.addWidget(group_box)
+        main_layout.addStretch()
         widget.setLayout(main_layout)
-        self.scroll.setWidget(widget)
+        self.scrollArea.setWidget(widget)
 
-    def show(self):
-        self.main_window.show()
-        if self.main_window.isMinimized():
-            self.main_window.showNormal()
+    def my_show(self):
+        self.show()
+        if self.isMinimized():
+            self.showNormal()
 
     def update_notifications(self):
-        self.create_window_notification()
+        '''
+        self.create_window_notification()'''
 
     @staticmethod
     def open_url(url):
@@ -490,7 +482,7 @@ class TrayIcon:
     def show_notification(self):
         if not len(data_base.get_notifications()) == 0:
             self.window_tasks.create_window_notification()
-            self.window_tasks.show()
+            self.window_tasks.my_show()
 
     def controller_tray_icon(self, trigger):
         if trigger == 3 and not self.user_logged:  # Левая кнопка мыши
@@ -545,7 +537,6 @@ class TrayIcon:
         self.update_date_time = datetime.datetime.time(datetime.datetime.today())
         if not(self.timer_animation.isActive()):
             self.timer_update_tool_tip.start(1000)
-        read_data = data_base.get_user()
         if not(self.timer_subscribe_notifications.isActive()):
             self.timer_subscribe_notifications.start(1000)
 
