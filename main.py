@@ -262,8 +262,7 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
             self.showNormal()
 
     def update_notifications(self):
-        '''
-        self.create_window_notification()'''
+        self.create_window_notification()
 
     @staticmethod
     def open_url(url):
@@ -465,6 +464,7 @@ class TrayIcon:
                 change_notifications.append(notification)
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
+        self.window_tasks.update_notifications()
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         if not len(data_base.get_notifications()) == 0 and not(self.timer_animation.isActive()):
