@@ -137,7 +137,7 @@ class DataBase(QThread):
         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
         self.table_users = my_sql_lite.Users()
         self.last_user = self.table_users.get()
-        self.api = Api(self, self.last_user['server'], self.last_user['token'])
+        self.api = Api(self.last_user['server'], self.last_user['token'])
         self.authorisation = False
 
     def run(self):
@@ -274,23 +274,22 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
 
 class Api:
 
-    def __init__(self, tray, server, token):
+    def __init__(self, server, token):
         logging.debug("Создание экземляра класса - Api")
         self.there_connection = True
         self.__server = server
-        self.tray = tray
         self.__access_token = token
         self.first_connection = True
 
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            self.tray.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
-            self.tray.set_icon('img/dart.png')
-            self.tray.constructor_menu()
+            tray_icon.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
+            tray_icon.set_icon('img/dart.png')
+            tray_icon.constructor_menu()
             self.there_connection = True
             self.__server = data_base.get_user()['server']
-            self.tray.constructor_menu()
+            tray_icon.constructor_menu()
             self.timer_connection_server.stop()
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
@@ -305,18 +304,18 @@ class Api:
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
-            if not self.first_connection:
-                self.tray.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
+            if self.first_connection:
+                tray_icon.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
             self.first_connection = False
             self.there_connection = False
-            self.tray.tray.setIcon(icon)
-            self.tray.constructor_menu()
-            self.tray.window_notification.main_window.hide()
-            if self.tray.timer_animation.isActive():
-                self.tray.timer_animation.stop()
+            tray_icon.tray.setIcon(icon)
+            tray_icon.constructor_menu()
+            tray_icon.window_tasks.hide()
+            if tray_icon.timer_animation.isActive():
+                tray_icon.timer_animation.stop()
             self.timer_connection_server = QtCore.QTimer()
             self.timer_connection_server.timeout.connect(self.connection_server)
-            self.timer_connection_server.start(2500)
+            self.timer_connection_server.start(1000)
             return False
 
     def get_notifications(self):
@@ -569,6 +568,7 @@ class TrayIcon:
         self.constructor_menu()
 
 
+tray_icon = None
 data_base = DataBase()
 data_base.start()
 
@@ -588,6 +588,7 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/dart.png'))
     app.setQuitOnLastWindowClosed(False)
+    global tray_icon
     tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
     app.exec_()
