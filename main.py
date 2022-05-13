@@ -133,16 +133,18 @@ class DataBase(QThread):
         super(DataBase, self).__init__(parent)
         self.table_notifications = my_sql_lite.Notifications()
         self.last_notifications = self.table_notifications.get_all()
+        self.notifications = []
         self.table_assigned_tasks = my_sql_lite.AssignedTasks()
         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
         self.table_users = my_sql_lite.Users()
         self.last_user = self.table_users.get()
-        self.api = Api(self, self.last_user['server'], self.last_user['token'])
+        self.api = Api(self.last_user['server'], self.last_user['token'])
         self.authorisation = False
 
     def run(self):
         while True:
-            if self.authorisation:
+            if self.authorisation and not json.loads(self.api.get_notifications().text) == self.notifications:
+                self.notifications = json.loads(self.api.get_notifications().text)
                 logging.debug("Проверка новых сообщений")
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
@@ -186,8 +188,15 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle('Gitart')
+        self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
         self.setWindowIcon(icon)
+        notifications = data_base.get_notifications()
+        layout = QHBoxLayout()
+        self.label_2.setText("Не прочитано - {} сообщен{}".format(
+            len(notifications),
+            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
+        self.frame.setLayout(layout)
 
     @staticmethod
     def create_notification_title(notification):
@@ -220,17 +229,6 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         notifications = data_base.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
-        label = QLabel("Не прочитано - {} сообщен{}".format(
-            len(notifications),
-            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setAlignment(QtCore.Qt.AlignCenter|QtCore.Qt.AlignCenter)
-        label.setStyleSheet("font-size:24px; color:#909090")
-        main_layout.addWidget(label)
-        layout = QHBoxLayout()
-        self.update_button = QPushButton('Обновить')
-        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
-        self.update_button.clicked.connect(self.update_notifications)
-        layout.addWidget(self.update_button)
         layout = QVBoxLayout()
         for notification in notifications:
             layout_notification = QVBoxLayout()
@@ -274,23 +272,22 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
 
 class Api:
 
-    def __init__(self, tray, server, token):
+    def __init__(self, server, token):
         logging.debug("Создание экземляра класса - Api")
         self.there_connection = True
         self.__server = server
-        self.tray = tray
         self.__access_token = token
         self.first_connection = True
 
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            self.tray.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
-            self.tray.set_icon('img/dart.png')
-            self.tray.constructor_menu()
+            tray_icon.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
+            tray_icon.set_icon('img/dart.png')
+            tray_icon.constructor_menu()
             self.there_connection = True
             self.__server = data_base.get_user()['server']
-            self.tray.constructor_menu()
+            tray_icon.constructor_menu()
             self.timer_connection_server.stop()
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
@@ -300,23 +297,24 @@ class Api:
     def check_connection_server(self):
         try:
             requests.get('{}'.format(self.__server), verify=False, timeout=1)
+            self.first_connection = False
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             if not self.first_connection:
-                self.tray.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
-            self.first_connection = False
+                tray_icon.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
+            self.first_connection = True
             self.there_connection = False
-            self.tray.tray.setIcon(icon)
-            self.tray.constructor_menu()
-            self.tray.window_notification.main_window.hide()
-            if self.tray.timer_animation.isActive():
-                self.tray.timer_animation.stop()
+            tray_icon.tray.setIcon(icon)
+            tray_icon.constructor_menu()
+            tray_icon.window_tasks.hide()
+            if tray_icon.timer_animation.isActive():
+                tray_icon.timer_animation.stop()
             self.timer_connection_server = QtCore.QTimer()
             self.timer_connection_server.timeout.connect(self.connection_server)
-            self.timer_connection_server.start(2500)
+            self.timer_connection_server.start(1000)
             return False
 
     def get_notifications(self):
@@ -364,7 +362,6 @@ class Api:
         return self.__server
 
     def update_server(self, server):
-        self.first_connection = True
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
@@ -378,9 +375,9 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token = self.lineEdit
         self.edit_server = self.lineEdit_2
         self.edit_server.setInputMask(r'\http{}'.format('x' * 20))
+        self.setFixedSize(self.width(), self.height())
 
     def my_show(self):
-        self.setFixedSize(self.width(), self.height())
         self.label_4.setPixmap(QtGui.QPixmap('img/dart.png'))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
@@ -437,6 +434,8 @@ class TrayIcon:
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
 
     def output_in_tray_data_about_tasks(self, notifications):
+        if len(notifications) > 0:
+            self.window_tasks.update_notifications()
         for notification in notifications:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
@@ -463,7 +462,6 @@ class TrayIcon:
                 change_notifications.append(notification)
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
-        self.window_tasks.update_notifications()
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         if not len(data_base.get_notifications()) == 0 and not(self.timer_animation.isActive()):
@@ -569,6 +567,7 @@ class TrayIcon:
         self.constructor_menu()
 
 
+tray_icon = None
 data_base = DataBase()
 data_base.start()
 
@@ -588,6 +587,7 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/dart.png'))
     app.setQuitOnLastWindowClosed(False)
+    global tray_icon
     tray_icon = TrayIcon('img/dart.png', app)
     tray_icon.constructor_menu()
     app.exec_()
