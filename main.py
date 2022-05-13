@@ -228,11 +228,6 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         label.setAlignment(QtCore.Qt.AlignCenter|QtCore.Qt.AlignCenter)
         label.setStyleSheet("font-size:24px; color:#909090")
         main_layout.addWidget(label)
-        layout = QHBoxLayout()
-        self.update_button = QPushButton('Обновить')
-        self.update_button.setStyleSheet("max-width:75px; min-width:75px;")
-        self.update_button.clicked.connect(self.update_notifications)
-        layout.addWidget(self.update_button)
         layout = QVBoxLayout()
         for notification in notifications:
             layout_notification = QVBoxLayout()
@@ -438,6 +433,8 @@ class TrayIcon:
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
 
     def output_in_tray_data_about_tasks(self, notifications):
+        if len(notifications) > 0:
+            self.window_tasks.update_notifications()
         for notification in notifications:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
@@ -464,7 +461,6 @@ class TrayIcon:
                 change_notifications.append(notification)
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
-        self.window_tasks.update_notifications()
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
                              get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         if not len(data_base.get_notifications()) == 0 and not(self.timer_animation.isActive()):
