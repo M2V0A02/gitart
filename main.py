@@ -133,6 +133,7 @@ class DataBase(QThread):
         super(DataBase, self).__init__(parent)
         self.table_notifications = my_sql_lite.Notifications()
         self.last_notifications = self.table_notifications.get_all()
+        self.notifications = []
         self.table_assigned_tasks = my_sql_lite.AssignedTasks()
         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
         self.table_users = my_sql_lite.Users()
@@ -142,7 +143,8 @@ class DataBase(QThread):
 
     def run(self):
         while True:
-            if self.authorisation:
+            if self.authorisation and not json.loads(self.api.get_notifications().text) == self.notifications:
+                self.notifications = json.loads(self.api.get_notifications().text)
                 logging.debug("Проверка новых сообщений")
                 self.table_notifications.clear()
                 self.table_assigned_tasks.clear()
