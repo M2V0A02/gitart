@@ -299,14 +299,15 @@ class Api:
     def check_connection_server(self):
         try:
             requests.get('{}'.format(self.__server), verify=False, timeout=1)
+            self.first_connection = False
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
-            if self.first_connection:
+            if not self.first_connection:
                 tray_icon.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
-            self.first_connection = False
+            self.first_connection = True
             self.there_connection = False
             tray_icon.tray.setIcon(icon)
             tray_icon.constructor_menu()
@@ -363,7 +364,6 @@ class Api:
         return self.__server
 
     def update_server(self, server):
-        self.first_connection = True
         logging.debug("Перезапись адреса сервера: {}".format(server))
         self.__server = server
 
