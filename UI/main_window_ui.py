@@ -14,7 +14,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(830, 830)
+        MainWindow.setEnabled(True)
+        MainWindow.resize(830, 781)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.frame = QtWidgets.QFrame(self.centralwidget)
@@ -24,17 +25,24 @@ class Ui_MainWindow(object):
         self.frame.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame.setObjectName("frame")
         self.label = QtWidgets.QLabel(self.frame)
-        self.label.setGeometry(QtCore.QRect(20, 10, 121, 31))
+        self.label.setGeometry(QtCore.QRect(20, 10, 91, 31))
         font = QtGui.QFont()
-        font.setFamily("Times New Roman")
+        font.setFamily("Century")
         font.setPointSize(16)
         font.setBold(False)
         font.setItalic(False)
         font.setWeight(50)
         self.label.setFont(font)
         self.label.setStyleSheet("color:  rgb(255, 255, 255);\n"
-"font: 16pt \"Times New Roman\";")
+"\n"
+"font: 16pt \"Bahnschrift\";\n"
+"font: 16pt \"Century\";")
         self.label.setObjectName("label")
+        self.label_2 = QtWidgets.QLabel(self.frame)
+        self.label_2.setGeometry(QtCore.QRect(290, 15, 371, 21))
+        self.label_2.setStyleSheet("color: rgb(255, 255, 255);\n"
+"font: 16pt \"Times New Roman\";")
+        self.label_2.setObjectName("label_2")
         self.scrollArea = QtWidgets.QScrollArea(self.centralwidget)
         self.scrollArea.setGeometry(QtCore.QRect(0, 50, 831, 711))
         self.scrollArea.setWidgetResizable(True)
@@ -49,17 +57,6 @@ class Ui_MainWindow(object):
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-        self.frame_3 = QtWidgets.QFrame(self.centralwidget)
-        self.frame_3.setGeometry(QtCore.QRect(0, 760, 830, 50))
-        self.frame_3.setStyleSheet("background-color: #6957A1;")
-        self.frame_3.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frame_3.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frame_3.setObjectName("frame_3")
-        self.label_3 = QtWidgets.QLabel(self.frame_3)
-        self.label_3.setGeometry(QtCore.QRect(20, 10, 121, 31))
-        self.label_3.setStyleSheet("color:  rgb(255, 255, 255);\n"
-"font: 16pt \"Times New Roman\";")
-        self.label_3.setObjectName("label_3")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -72,4 +69,4 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label.setText(_translate("MainWindow", "GITART"))
-        self.label_3.setText(_translate("MainWindow", "GITART"))
+        self.label_2.setText(_translate("MainWindow", "TextLabel"))

@@ -188,8 +188,15 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle('Gitart')
+        self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
         self.setWindowIcon(icon)
+        notifications = data_base.get_notifications()
+        layout = QHBoxLayout()
+        self.label_2.setText("Не прочитано - {} сообщен{}".format(
+            len(notifications),
+            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
+        self.frame.setLayout(layout)
 
     @staticmethod
     def create_notification_title(notification):
@@ -222,12 +229,6 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         notifications = data_base.get_notifications()
         widget = QWidget()
         main_layout = QVBoxLayout()
-        label = QLabel("Не прочитано - {} сообщен{}".format(
-            len(notifications),
-            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
-        label.setAlignment(QtCore.Qt.AlignCenter|QtCore.Qt.AlignCenter)
-        label.setStyleSheet("font-size:24px; color:#909090")
-        main_layout.addWidget(label)
         layout = QVBoxLayout()
         for notification in notifications:
             layout_notification = QVBoxLayout()
@@ -374,9 +375,9 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.edit_token = self.lineEdit
         self.edit_server = self.lineEdit_2
         self.edit_server.setInputMask(r'\http{}'.format('x' * 20))
+        self.setFixedSize(self.width(), self.height())
 
     def my_show(self):
-        self.setFixedSize(self.width(), self.height())
         self.label_4.setPixmap(QtGui.QPixmap('img/dart.png'))
         self.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
         self.pushButton.clicked.connect(self.save_settings)
