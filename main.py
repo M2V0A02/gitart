@@ -146,7 +146,6 @@ class DataBase(QThread):
     def run(self):
         while True:
             if self.authorisation:
-
                 if not json.loads(self.api.get_notifications().text) == self.notifications:
                     self.notifications = json.loads(self.api.get_notifications().text)
                     try:
@@ -213,9 +212,6 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         self.setWindowIcon(icon)
         notifications = data_base.get_notifications()
         layout = QHBoxLayout()
-        self.label_2.setText("Не прочитано - {} сообщен{}".format(
-            len(notifications),
-            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         self.frame.setLayout(layout)
 
     @staticmethod
@@ -247,6 +243,9 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
     def create_window_notification(self):
         group_box = QGroupBox()
         notifications = data_base.get_notifications()
+        self.label_2.setText("Не прочитано - {} сообщен{}".format(
+            len(notifications),
+            get_ending_by_number(len(notifications), ['ие', 'ия', 'ий'])))
         widget = QWidget()
         main_layout = QVBoxLayout()
         layout = QVBoxLayout()
