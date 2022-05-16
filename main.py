@@ -454,8 +454,6 @@ class TrayIcon:
         self.timer_subscribe_notifications.timeout.connect(self.subscribe_notification)
 
     def output_in_tray_data_about_tasks(self, notifications):
-        if len(notifications) > 0:
-            self.window_tasks.update_notifications()
         for notification in notifications:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
@@ -480,6 +478,8 @@ class TrayIcon:
                     break
             if not if_exist:
                 change_notifications.append(notification)
+        if self.exist_messages == notifications:
+            self.window_tasks.update_notifications()
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
