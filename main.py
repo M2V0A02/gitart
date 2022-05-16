@@ -76,19 +76,20 @@ def save_notifications(api, notifications, table):
                 download_icon(repo['user']['avatar_url'], user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
+        id_notification = "'{}'".format(notification['id'])
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
         created_time = "'{}'".format(formatting_the_date(notification.get('updated_at', 'null')))
         url = "'{}'".format(notification.get('subject', {}).get('url', 'null'))
         state = "'{}'".format(notification['subject']['state'])
         title = "'{}'".format(notification['subject']['title'])
-        table.save(message, user_login, full_name, created_time, url, user_avatar_name, state, title)
+        table.save(id_notification, message, user_login, full_name, created_time, url, user_avatar_name, state, title)
 
 
-def save_assigned_tasks(api, assigned_tasks, table):
-    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, json.loads(api.get_user().text))
+def save_assigned_tasks(user, assigned_tasks, table):
+    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, user)
     for assigned_to_you_task in assigned_to_you_tasks:
         title = "'{}'".format(assigned_to_you_task['title'])
-        task_id = re.search(r'/issues/.+', assigned_to_you_task['url'])[0].replace("/issues/", '')
+        task_id = assigned_to_you_task['id']
         full_name = "'{}'".format(assigned_to_you_task['repository']['full_name'])
         created_time = "'{}'".format(formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y'))
         creator = "'{}'".format(assigned_to_you_task['user']['login'])
@@ -96,7 +97,7 @@ def save_assigned_tasks(api, assigned_tasks, table):
         milestone_title = "''"
         if not (assigned_to_you_task['milestone'] is None):
             milestone_title = "'{}'".format(assigned_to_you_task['milestone']['title'])
-        table.save(task_id, title, full_name, created_time, creator, url, milestone_title)
+        table.save(task_id, title, created_time, full_name, creator, url, milestone_title)
 
 
 def update_user(api):
@@ -134,6 +135,7 @@ class DataBase(QThread):
         self.table_notifications = my_sql_lite.Notifications()
         self.last_notifications = self.table_notifications.get_all()
         self.notifications = []
+        self.assigned_tasks = []
         self.table_assigned_tasks = my_sql_lite.AssignedTasks()
         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
         self.table_users = my_sql_lite.Users()
@@ -143,18 +145,36 @@ class DataBase(QThread):
 
     def run(self):
         while True:
-            if self.authorisation and not json.loads(self.api.get_notifications().text) == self.notifications:
-                self.notifications = json.loads(self.api.get_notifications().text)
-                logging.debug("Проверка новых сообщений")
-                self.table_notifications.clear()
-                self.table_assigned_tasks.clear()
-                try:
-                    save_notifications(self.api, json.loads(self.api.get_notifications().text), self.table_notifications)
-                    save_assigned_tasks(self.api, json.loads(self.api.get_issues().text), self.table_assigned_tasks)
-                    self.last_notifications = self.table_notifications.get_all()
+            if self.authorisation:
+
+                if not json.loads(self.api.get_notifications().text) == self.notifications:
+                    self.notifications = json.loads(self.api.get_notifications().text)
+                    try:
+                        self.table_notifications.clear()
+                        save_notifications(self.api, json.loads(self.api.get_notifications().text),
+                                           self.table_notifications)
+                        self.last_notifications = self.table_notifications.get_all()
+                    except:
+                        logging.error("Нарушение потока")
+                assigned_tasks = json.loads(self.api.get_issues().text)
+                assigned_tasks = filter_assigned_you_task(assigned_tasks, self.get_user())
+                if not assigned_tasks == self.assigned_tasks:
+                    self.assigned_tasks = assigned_tasks
+                    for assigned_task in assigned_tasks:
+                        if_exist = False
+                        for last_assigned_task in self.last_assigned_tasks:
+                            if assigned_task['id'] == last_assigned_task['id']:
+                                if_exist = True
+                                break
+                        if not if_exist:
+                            tray_icon.tray.showMessage(
+                                "Новая назначенная задача от {}".format(assigned_task['user']['login']),
+                                assigned_task['title'],
+                                QIcon('img/logo.svg'))
+                    self.table_assigned_tasks.clear()
+                    save_assigned_tasks(self.get_user(), assigned_tasks, self.table_assigned_tasks)
                     self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                except:
-                    logging.error("Нарушение потока")
+                time.sleep(5)
 
     def get_notifications(self):
         return self.last_notifications
@@ -440,6 +460,7 @@ class TrayIcon:
             if notification['state'] == 'closed':
                 message = "репозиторий закрыт"
             elif not (notification['message'] == '' or notification['message'] == 'None'):
+                print(notification)
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Репозиторий открыт"
@@ -454,8 +475,7 @@ class TrayIcon:
             if_exist = False
             new_notifications.append(notification)
             for exist_message in self.exist_messages:
-                if exist_message['created_time'] == notification['created_time'] and \
-                        exist_message['message'] == notification['message']:
+                if exist_message['id'] == notification['id']:
                     if_exist = True
                     break
             if not if_exist:
