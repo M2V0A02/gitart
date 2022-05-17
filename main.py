@@ -72,8 +72,9 @@ def save_notifications(api, notifications, table):
             try:
                 repo = json.loads(api.get_repos_issues(repo, issues).text)
                 user_login = "'{}'".format(repo['user']['login'])
-                user_avatar_name = "'{}'".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ''))
+                user_avatar_name = "{}".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ''))
                 download_icon(repo['user']['avatar_url'], user_avatar_name)
+                user_avatar_name = "'{}'".format(user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
         id_notification = "'{}'".format(notification['id'])
@@ -210,23 +211,34 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
         self.setWindowIcon(icon)
-        notifications = data_base.get_notifications()
         layout = QHBoxLayout()
         self.frame.setLayout(layout)
 
     @staticmethod
     def create_notification_title(notification):
+        qv_layout = QVBoxLayout()
         layout = QHBoxLayout()
+        label = QLabel('Заголовок:')
+        label.setStyleSheet("color: #6957A1;")
+        layout.addWidget(label)
+        layout.addWidget(QLabel("{}, ".format(notification['title'])))
         label = QLabel('Репозиторий:')
         label.setStyleSheet("color: #6957A1;")
         layout.addWidget(label)
-        repo = notification['full_name']
-        layout.addWidget(QLabel("{}, ".format(repo)))
+        layout.addWidget(QLabel("{}, ".format(notification['full_name'])))
         label = QLabel('Дата создания:')
         label.setStyleSheet('color: #6957A1;')
         layout.addWidget(label)
         layout.addWidget(QLabel("{}, ".format(notification['created_time'])))
+        label = QLabel('Состояние задачи:')
+        label.setStyleSheet('color: #6957A1;')
+        layout.addWidget(label)
+        state = "открыта, " if notification['state'] == "open" else "закрыта, "
+        layout.addWidget(QLabel(state))
+        layout.addStretch()
+        qv_layout.addLayout(layout)
         if not (notification['user_login'] is None):
+            layout = QHBoxLayout()
             label = QLabel('Пользователь: ')
             label.setStyleSheet('color: #6957A1;')
             layout.addWidget(label)
@@ -235,10 +247,10 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
             label.setPixmap(pixmap.scaled(16, 16, QtCore.Qt.KeepAspectRatio))
             label.setStyleSheet('margin:0; padding:0;')
             layout.addWidget(label)
-            layout.addWidget(label)
             layout.addWidget(QLabel('{}.'.format(notification['user_login'])))
-        layout.addStretch()
-        return layout
+            layout.addStretch()
+            qv_layout.addLayout(layout)
+        return qv_layout
 
     def create_window_notification(self):
         group_box = QGroupBox()
@@ -267,6 +279,10 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
             button.clicked.connect(open_notification)
             layout_notification.addWidget(button)
             layout_notification.setSpacing(10)
+            widget_notification = QWidget()
+            widget_notification.setFixedSize(790, 1)
+            widget_notification.setStyleSheet("border: 1px solid rgba(0, 0, 0, 15);")
+            layout_notification.addWidget(widget_notification)
             layout.addLayout(layout_notification)
         layout.setSpacing(50)
         group_box.setLayout(layout)
