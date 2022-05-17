@@ -146,35 +146,38 @@ class DataBase(QThread):
 
     def run(self):
         while True:
-            if self.authorisation:
-                if not json.loads(self.api.get_notifications().text) == self.notifications:
-                    self.notifications = json.loads(self.api.get_notifications().text)
-                    try:
-                        self.table_notifications.clear()
-                        save_notifications(self.api, json.loads(self.api.get_notifications().text),
-                                           self.table_notifications)
-                        self.last_notifications = self.table_notifications.get_all()
-                    except:
-                        logging.error("Нарушение потока")
-                assigned_tasks = json.loads(self.api.get_issues().text)
-                assigned_tasks = filter_assigned_you_task(assigned_tasks, self.get_user())
-                if not assigned_tasks == self.assigned_tasks:
-                    self.assigned_tasks = assigned_tasks
-                    for assigned_task in assigned_tasks:
-                        if_exist = False
-                        for last_assigned_task in self.last_assigned_tasks:
-                            if assigned_task['id'] == last_assigned_task['id']:
-                                if_exist = True
-                                break
-                        if not if_exist:
-                            tray_icon.tray.showMessage(
-                                "Новая назначенная задача от {}".format(assigned_task['user']['login']),
-                                assigned_task['title'],
-                                QIcon('img/logo.svg'))
-                    self.table_assigned_tasks.clear()
-                    save_assigned_tasks(self.get_user(), assigned_tasks, self.table_assigned_tasks)
-                    self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                time.sleep(5)
+            try:
+                if self.authorisation:
+                    if not json.loads(self.api.get_notifications().text) == self.notifications:
+                        self.notifications = json.loads(self.api.get_notifications().text)
+                        try:
+                            self.table_notifications.clear()
+                            save_notifications(self.api, json.loads(self.api.get_notifications().text),
+                                               self.table_notifications)
+                            self.last_notifications = self.table_notifications.get_all()
+                        except:
+                            logging.error("Нарушение потока")
+                    assigned_tasks = json.loads(self.api.get_issues().text)
+                    assigned_tasks = filter_assigned_you_task(assigned_tasks, self.get_user())
+                    if not assigned_tasks == self.assigned_tasks:
+                        self.assigned_tasks = assigned_tasks
+                        for assigned_task in assigned_tasks:
+                            if_exist = False
+                            for last_assigned_task in self.last_assigned_tasks:
+                                if assigned_task['id'] == last_assigned_task['id']:
+                                    if_exist = True
+                                    break
+                            if not if_exist:
+                                tray_icon.tray.showMessage(
+                                    "Новая назначенная задача от {}".format(assigned_task['user']['login']),
+                                    assigned_task['title'],
+                                    QIcon('img/logo.svg'))
+                        self.table_assigned_tasks.clear()
+                        save_assigned_tasks(self.get_user(), assigned_tasks, self.table_assigned_tasks)
+                        self.last_assigned_tasks = self.table_assigned_tasks.get_all()
+                    time.sleep(5)
+            except:
+                pass
 
     def get_notifications(self):
         return self.last_notifications
@@ -207,6 +210,8 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         self.tray = tray
         super().__init__()
         self.setupUi(self)
+        self.pushButton.clicked.connect(self.update_notifications)
+        self.label_3.setText("Последние обновление: {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         self.setWindowTitle('Gitart')
         self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
@@ -253,6 +258,7 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         return qv_layout
 
     def create_window_notification(self):
+        self.label_3.setText("Последние обновление: {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         group_box = QGroupBox()
         notifications = data_base.get_notifications()
         self.label_2.setText("Не прочитано - {} сообщен{}".format(
@@ -274,8 +280,8 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
             button = QPushButton("Перейти в - {}/issues/{} ".format(notification['full_name'],
                                                                     notification['number_issues']))
             button.setStyleSheet(
-                """font-size:12px; color: #337AB7; background: rgba(255,255,255,0); border-radius:
-                 .28571429rem; height: 20px; border-color: #dedede; text-align:right; margin:0, 0, 0, 20""")
+                """font-size:12px; color: #337AB7; background: rgba(255,255,255,0); 
+                   text-align:right; margin:0, 0, 0, 0""")
             button.clicked.connect(open_notification)
             layout_notification.addWidget(button)
             layout_notification.setSpacing(10)
@@ -297,6 +303,7 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
             self.showNormal()
 
     def update_notifications(self):
+        self.label_3.setText("Последние обновление: {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         self.create_window_notification()
 
     @staticmethod
@@ -471,11 +478,11 @@ class TrayIcon:
     def output_in_tray_data_about_tasks(self, notifications):
         for notification in notifications:
             if notification['state'] == 'closed':
-                message = "репозиторий закрыт"
+                message = "Задача закрыта"
             elif not (notification['message'] == '' or notification['message'] is None):
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
-                message = "Репозиторий открыт"
+                message = "Задача открыта"
             self.tray.showMessage(notification['title'], message, QIcon('img/notification.png'))
 
     def subscribe_notification(self):
@@ -492,8 +499,6 @@ class TrayIcon:
                     break
             if not if_exist:
                 change_notifications.append(notification)
-        if self.exist_messages == notifications:
-            self.window_tasks.update_notifications()
         self.exist_messages = new_notifications
         self.output_in_tray_data_about_tasks(change_notifications)
         self.tray.setToolTip("Не прочитано - {} сообщен{}.".format(len(notifications),
