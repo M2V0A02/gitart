@@ -42,14 +42,13 @@ def formatting_the_date(string_date):
     return string_date
 
 
-def filter_assigned_you_task(all_tasks, user):
-    def filter_tasks(assigned_to_you_tasks):
-        if not (assigned_to_you_tasks['assignees'] is None):
-            for assigned_to_you_task in (assigned_to_you_tasks['assignees']):
-                if assigned_to_you_task['login'] == user['login']:
+def filter_assigned_you_task(all_tasks, login):
+    def filter_tasks(assigned_to_you_task):
+        if not (assigned_to_you_task['assignees'] is None):
+            for assigned_to_you_task in (assigned_to_you_task['assignees']):
+                if assigned_to_you_task['login'] == login:
                     return True
         return False
-
     return list(filter(filter_tasks, all_tasks))
 
 
@@ -86,8 +85,8 @@ def save_notifications(api, notifications, table):
         table.save(id_notification, message, user_login, full_name, created_time, url, user_avatar_name, state, title)
 
 
-def save_assigned_tasks(user, assigned_tasks, table):
-    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, user)
+def get_assigned_tasks(assigned_tasks, login):
+    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, login)
     for assigned_to_you_task in assigned_to_you_tasks:
         title = "'{}'".format(assigned_to_you_task['title'])
         task_id = assigned_to_you_task['id']
@@ -98,7 +97,8 @@ def save_assigned_tasks(user, assigned_tasks, table):
         milestone_title = "''"
         if not (assigned_to_you_task['milestone'] is None):
             milestone_title = "'{}'".format(assigned_to_you_task['milestone']['title'])
-        table.save(task_id, title, created_time, full_name, creator, url, milestone_title)
+        return {'title': title, 'task_id': task_id, 'full_name': full_name,
+                'created_time': created_time, 'creator': creator, 'url': url, 'milestone_title': milestone_title}
 
 
 def update_user(api):
@@ -146,7 +146,6 @@ class DataBase(QThread):
 
     def run(self):
         while True:
-            try:
                 if self.authorisation:
                     if not json.loads(self.api.get_notifications().text) == self.notifications:
                         self.notifications = json.loads(self.api.get_notifications().text)
@@ -157,9 +156,8 @@ class DataBase(QThread):
                             self.last_notifications = self.table_notifications.get_all()
                         except:
                             logging.error("Нарушение потока")
-                    assigned_tasks = json.loads(self.api.get_issues().text)
-                    assigned_tasks = filter_assigned_you_task(assigned_tasks, self.get_user())
-                    if not assigned_tasks == self.assigned_tasks:
+                    assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text), self.get_user()['login'])
+                    if not (assigned_tasks == self.assigned_tasks or assigned_tasks is None):
                         self.assigned_tasks = assigned_tasks
                         for assigned_task in assigned_tasks:
                             if_exist = False
@@ -173,11 +171,13 @@ class DataBase(QThread):
                                     assigned_task['title'],
                                     QIcon('img/logo.svg'))
                         self.table_assigned_tasks.clear()
-                        save_assigned_tasks(self.get_user(), assigned_tasks, self.table_assigned_tasks)
+                        assigned_tasks = get_assigned_tasks(assigned_tasks, self.get_user()['login'])
+                        self.table_assigned_tasks.save(assigned_tasks['id_task'], assigned_tasks['title'],
+                                                       assigned_tasks['created_at'], assigned_tasks['full_name'],
+                                                       assigned_tasks['name'], assigned_tasks['url'],
+                                                       assigned_tasks['milestone_title'])
                         self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                    time.sleep(5)
-            except:
-                pass
+                    time.sleep(60)
 
     def get_notifications(self):
         return self.last_notifications
@@ -338,7 +338,7 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get('{}'.format(self.__server), verify=False, timeout=1)
+            requests.get('{}'.format(self.__server), timeout=1)
             self.first_connection = False
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
