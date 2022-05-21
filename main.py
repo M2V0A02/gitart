@@ -17,9 +17,21 @@ import UI.main_window_ui as main_window_ui
 import my_sql_lite
 from PyQt5.QtWinExtras import QtWin
 from PyQt5.QtCore import QThread
+from plyer.utils import platform
+from plyer import notification
+
 
 # Когда лог, больше несколько строк indent_format показывает сколько должно быть отступов у новой строки.
 indent_format = 24
+
+
+def show_message_in_tray(title, message, icon_path):
+    notification.notify(
+        title=title,
+        message=message,
+        app_name='Gitart',
+        app_icon=icon_path
+    )
 
 
 def download_icon(url, name):
@@ -40,16 +52,6 @@ def formatting_the_date(string_date):
     timezone = int(timezone[len(timezone) - 5:len(timezone) - 3])
     string_date = string_date + datetime.timedelta(hours=timezone)
     return string_date
-
-
-def filter_assigned_you_task(all_tasks, login):
-    def filter_tasks(assigned_to_you_task):
-        if not (assigned_to_you_task['assignees'] is None):
-            for assigned_to_you_task in (assigned_to_you_task['assignees']):
-                if assigned_to_you_task['login'] == login:
-                    return True
-        return False
-    return list(filter(filter_tasks, all_tasks))
 
 
 def save_notifications(api, notifications, table):
@@ -85,20 +87,22 @@ def save_notifications(api, notifications, table):
         table.save(id_notification, message, user_login, full_name, created_time, url, user_avatar_name, state, title)
 
 
-def get_assigned_tasks(assigned_tasks, login):
-    assigned_to_you_tasks = filter_assigned_you_task(assigned_tasks, login)
+def get_assigned_tasks(assigned_to_you_tasks):
+    assigned_tasks = []
     for assigned_to_you_task in assigned_to_you_tasks:
-        title = "'{}'".format(assigned_to_you_task['title'])
+        title = assigned_to_you_task['title']
         task_id = assigned_to_you_task['id']
-        full_name = "'{}'".format(assigned_to_you_task['repository']['full_name'])
-        created_time = "'{}'".format(formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y'))
-        creator = "'{}'".format(assigned_to_you_task['user']['login'])
-        url = "'{}'".format(assigned_to_you_task['html_url'])
-        milestone_title = "''"
+        full_name = assigned_to_you_task['repository']['full_name']
+        created_time = formatting_the_date(assigned_to_you_task['created_at']).strftime('%d-%m-%Y')
+        creator = assigned_to_you_task['user']['login']
+        url = assigned_to_you_task['html_url']
+        milestone_title = ""
         if not (assigned_to_you_task['milestone'] is None):
-            milestone_title = "'{}'".format(assigned_to_you_task['milestone']['title'])
-        return {'title': title, 'task_id': task_id, 'full_name': full_name,
-                'created_time': created_time, 'creator': creator, 'url': url, 'milestone_title': milestone_title}
+            milestone_title = assigned_to_you_task['milestone']['title']
+        assigned_tasks.append({'id': task_id, 'title': title, 'created_at': created_time,
+                               'full_name': full_name, 'creator': creator, 'url': url,
+                               'milestone_title': milestone_title})
+    return assigned_tasks
 
 
 def update_user(api):
@@ -146,38 +150,48 @@ class DataBase(QThread):
 
     def run(self):
         while True:
-                if self.authorisation:
-                    if not json.loads(self.api.get_notifications().text) == self.notifications:
-                        self.notifications = json.loads(self.api.get_notifications().text)
-                        try:
-                            self.table_notifications.clear()
-                            save_notifications(self.api, json.loads(self.api.get_notifications().text),
-                                               self.table_notifications)
-                            self.last_notifications = self.table_notifications.get_all()
-                        except:
-                            logging.error("Нарушение потока")
-                    assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text), self.get_user()['login'])
-                    if not (assigned_tasks == self.assigned_tasks or assigned_tasks is None):
-                        self.assigned_tasks = assigned_tasks
-                        for assigned_task in assigned_tasks:
+            if self.authorisation:
+                if not json.loads(self.api.get_notifications().text) == self.notifications:
+                    self.notifications = json.loads(self.api.get_notifications().text)
+                    try:
+                        self.table_notifications.clear()
+                        save_notifications(self.api, json.loads(self.api.get_notifications().text),
+                                           self.table_notifications)
+                        self.last_notifications = self.table_notifications.get_all()
+                    except:
+                        logging.error("Нарушение потока")
+                assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text))
+                if not (assigned_tasks == self.last_assigned_tasks or assigned_tasks is None):
+
+                    self.assigned_tasks = assigned_tasks
+                    for assigned_task in assigned_tasks:
+                        if_exist = False
+                        for last_assigned_task in self.last_assigned_tasks:
+                            if assigned_task['id'] == last_assigned_task['id']:
+                                if_exist = True
+                                break
+                        if not if_exist:
+                            show_message_in_tray("Новая назначенная задача от {}".format(assigned_task['creator']),
+                                                 assigned_task['title'],
+                                                 'img/logo.ico')
+                            self.table_assigned_tasks.save(assigned_task['id'],
+                                                           "'{}'".format(assigned_task['title']),
+                                                           "'{}'".format(assigned_task['created_at']),
+                                                           "'{}'".format(assigned_task['full_name']),
+                                                           "'{}'".format(assigned_task['creator']),
+                                                           "'{}'".format(assigned_task['url']),
+                                                           "'{}'".format(assigned_task['milestone_title']))
+                        for last_assigned_task in self.last_assigned_tasks:
                             if_exist = False
-                            for last_assigned_task in self.last_assigned_tasks:
+                            for assigned_task in assigned_tasks:
                                 if assigned_task['id'] == last_assigned_task['id']:
                                     if_exist = True
                                     break
                             if not if_exist:
-                                tray_icon.tray.showMessage(
-                                    "Новая назначенная задача от {}".format(assigned_task['user']['login']),
-                                    assigned_task['title'],
-                                    QIcon('img/logo.svg'))
-                        self.table_assigned_tasks.clear()
-                        assigned_tasks = get_assigned_tasks(assigned_tasks, self.get_user()['login'])
-                        self.table_assigned_tasks.save(assigned_tasks['id_task'], assigned_tasks['title'],
-                                                       assigned_tasks['created_at'], assigned_tasks['full_name'],
-                                                       assigned_tasks['name'], assigned_tasks['url'],
-                                                       assigned_tasks['milestone_title'])
-                        self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                    time.sleep(60)
+                                self.table_assigned_tasks.delete_by_id(last_assigned_task['id'])
+                    self.last_assigned_tasks = self.table_assigned_tasks.get_all()
+                    print(self.last_assigned_tasks)
+                time.sleep(60)
 
     def get_notifications(self):
         return self.last_notifications
@@ -324,7 +338,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
-            tray_icon.tray.showMessage("Подключение к серверу", 'Установлено', QIcon('img/dart.png'))
+            show_message_in_tray("Подключение к серверу", 'Установлено', 'img/dart.ico')
             tray_icon.set_icon('img/dart.png')
             tray_icon.constructor_menu()
             self.there_connection = True
@@ -346,7 +360,7 @@ class Api:
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
             icon = QIcon('img/connection_lost.png')
             if not self.first_connection:
-                tray_icon.tray.showMessage("Подключение к серверу", 'Прервано', QIcon('img/connection_lost.png'))
+                show_message_in_tray("Подключение к серверу", 'Прервано', 'img/connection_lost.ico')
             self.first_connection = True
             self.there_connection = False
             tray_icon.tray.setIcon(icon)
@@ -367,7 +381,7 @@ class Api:
 
     def get_issues(self):
         if self.check_connection_server():
-            response = requests.get("{}/api/v1/repos/issues/search?access_token={}&limit=100".format(self.__server,
+            response = requests.get("{}/api/v1/repos/issues/search?access_token={}&assigned=true".format(self.__server,
                                                                                                      self.__access_token))
             logging.debug("Получение задач")
             return response
@@ -483,7 +497,7 @@ class TrayIcon:
                 message = "\n'Новое сообщение:{}'".format(notification['message'])
             else:
                 message = "Задача открыта"
-            self.tray.showMessage(notification['title'], message, QIcon('img/notification.png'))
+            show_message_in_tray(notification['title'], message, 'img/notification.ico')
 
     def subscribe_notification(self):
         logging.debug("Проверка новых сообщений")
@@ -535,16 +549,13 @@ class TrayIcon:
     def authentication_successful(self):
         data_base.set_authorisation(True)
         user = data_base.get_user()
-        if self.user_logged:
-            info_about_user = "Логин: {} \nФИО: {}".format(user['login'], user['full_name'])
-            self.tray.showMessage('Авторизация', info_about_user, QIcon("img/{}.jpg".format(str(user['id']))))
+        download_icon(user['avatar_url'], data_base.get_user()['id'])
         self.user_logged = False
         logging.debug("TrayIcon: Токен доступа действителен. Информация о пользователе: {}".format(user['full_name']))
         name_user = QAction("{}({})".format(user['full_name'], user["login"]))
         name_user.setEnabled(False)
         self.menu.addAction(name_user)
         self.menu_items.append(name_user)
-        download_icon(user['avatar_url'], data_base.get_user()['id'])
         self.set_icon('img/{}.jpg'.format(str(user['id'])))
         logout = self.logout
         login = QAction('Выйти из {}'.format(user['login']))
@@ -602,7 +613,6 @@ class TrayIcon:
         data_base.update_user({'token': 'null'})
         self.set_icon('img/dart.png')
         self.user_logged = True
-        self.tray.showMessage('Авторизация', 'Снята', QIcon('img/dart.png'))
         self.constructor_menu()
 
 
@@ -612,6 +622,7 @@ data_base.start()
 
 
 def main():
+
     logging.getLogger('urllib3').setLevel(logging.WARNING)
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
@@ -628,6 +639,7 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     global tray_icon
     tray_icon = TrayIcon('img/dart.png', app)
+    app.processEvents()
     tray_icon.constructor_menu()
     app.exec_()
 

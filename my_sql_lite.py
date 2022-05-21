@@ -27,10 +27,10 @@ class AssignedTasks:
                     full_name TEXT, creator TEXT, url TEXT, milestone_title TEXT);""".format(self.name_table))
         self.conn.commit()
 
-    def save(self, id_task, title, created_at, full_name, name, url, milestone_title):
+    def save(self, task_id, title, created_time, full_name, creator, url, milestone_title):
         self.cur.execute("""INSERT INTO {}(id, title, created_at, full_name, creator, url, milestone_title) VALUES 
-        ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, id_task, title, created_at, full_name,
-                                               name, url, milestone_title))
+        ({}, {}, {}, {}, {}, {}, {})""".format(self.name_table, task_id, title, created_time, full_name,
+                                               creator, url, milestone_title))
         self.conn.commit()
 
     def get_all(self):
@@ -41,6 +41,9 @@ class AssignedTasks:
         self.cur.execute("DELETE FROM {}".format(self.name_table))
         self.conn.commit()
 
+    def delete_by_id(self, task_id):
+        self.cur.execute("DELETE FROM {} WHERE id = {}".format(self.name_table, task_id))
+        self.conn.commit()
 
 class Users:
     def __init__(self):
