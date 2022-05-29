@@ -64,7 +64,10 @@ def save_notifications(api, notifications, table):
                 replace('repos/', '').replace('/issues', '')
             issues = re.search(r'/issues/.+', notification['subject']['url'])[0].replace('/issues/', '')
             try:
-                repo = json.loads(api.get_repos_issues(repo, issues).text)
+                try:
+                    repo = json.loads(api.get_repos_issues(repo, issues).text)
+                except AttributeError:
+                    return
                 user_login = "'{}'".format(repo['user']['login'])
                 start = - 1
                 for i in range(4):
@@ -78,7 +81,6 @@ def save_notifications(api, notifications, table):
                 id_comments = re.search(r'comments/\d+', format(notification['subject']
                                                                 ['latest_comment_url']))[0].replace('comments/', '')
                 try:
-
                     message = "'{}'".format(json.loads(api.get_comment(repo['repository']['name'],
                                                                        repo['repository']['owner'],
                                                                        id_comments).text)['body'])
@@ -112,7 +114,10 @@ def get_assigned_tasks(assigned_to_you_tasks):
 
 
 def update_user(api):
-    user_json = json.loads(api.get_user().text)
+    try:
+        user_json = json.loads(api.get_user().text)
+    except AttributeError:
+        user_json = {}
     full_name = "'{}'".format(user_json.get('full_name', 'NULL'))
     login = "'{}'".format(user_json.get('login', 'NULL'))
     avatar_url = "'{}'".format(user_json.get('avatar_url', 'NULL'))
@@ -157,13 +162,19 @@ class DataBase(QThread):
     def run(self):
         while True:
             if self.authorisation:
-                if not json.loads(self.api.get_notifications().text) == self.notifications:
-                    self.notifications = json.loads(self.api.get_notifications().text)
-                    self.table_notifications.clear()
-                    save_notifications(self.api, json.loads(self.api.get_notifications().text),
-                                       self.table_notifications)
-                    self.last_notifications = self.table_notifications.get_all()
-                assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text))
+                try:
+                    if not json.loads(self.api.get_notifications().text) == self.notifications:
+                        self.notifications = json.loads(self.api.get_notifications().text)
+                        self.table_notifications.clear()
+                        save_notifications(self.api, json.loads(self.api.get_notifications().text),
+                                           self.table_notifications)
+                        self.last_notifications = self.table_notifications.get_all()
+                except AttributeError:
+                    pass
+                try:
+                    assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text))
+                except AttributeError:
+                    assigned_tasks = None
                 if not (assigned_tasks == self.last_assigned_tasks or assigned_tasks is None):
 
                     self.assigned_tasks = assigned_tasks
