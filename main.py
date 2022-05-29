@@ -57,13 +57,6 @@ def formatting_the_date(string_date):
 def save_notifications(api, notifications, table):
     for notification in notifications:
         message = 'null'
-        if not (notification['subject']['latest_comment_url'] == ''):
-            id_comments = re.search(r'comments/\d+', format(notification['subject']
-                                                            ['latest_comment_url']))[0].replace('comments/', '')
-            try:
-                message = "'{}'".format(json.loads(api.get_comment(id_comments).text)['body'])
-            except (json.decoder.JSONDecodeError, AttributeError):
-                message = 'null'
         user_login = 'null'
         user_avatar_name = 'null'
         if not (notification['subject']['url'] == ''):
@@ -73,11 +66,24 @@ def save_notifications(api, notifications, table):
             try:
                 repo = json.loads(api.get_repos_issues(repo, issues).text)
                 user_login = "'{}'".format(repo['user']['login'])
-                user_avatar_name = "{}".format(repo['user']['avatar_url'].replace("http://server300:1080/avatars/", ''))
+                start = - 1
+                for i in range(4):
+                    start = repo['user']['avatar_url'].find("/", start + 1)
+                user_avatar_name = "{}".format(repo['user']['avatar_url'][start:len(repo['user']['avatar_url'])])
                 download_icon(repo['user']['avatar_url'], user_avatar_name)
                 user_avatar_name = "'{}'".format(user_avatar_name)
             except (json.decoder.JSONDecodeError, AttributeError):
                 user_login = 'null'
+            if not (notification['subject']['latest_comment_url'] == ''):
+                id_comments = re.search(r'comments/\d+', format(notification['subject']
+                                                                ['latest_comment_url']))[0].replace('comments/', '')
+                try:
+
+                    message = "'{}'".format(json.loads(api.get_comment(repo['repository']['name'],
+                                                                       repo['repository']['owner'],
+                                                                       id_comments).text)['body'])
+                except (json.decoder.JSONDecodeError, AttributeError, KeyError):
+                    message = 'null'
         id_notification = "'{}'".format(notification['id'])
         full_name = "'{}'".format(notification.get('repository', {}).get('full_name', 'null'))
         created_time = "'{}'".format(formatting_the_date(notification.get('updated_at', 'null')))
@@ -153,13 +159,10 @@ class DataBase(QThread):
             if self.authorisation:
                 if not json.loads(self.api.get_notifications().text) == self.notifications:
                     self.notifications = json.loads(self.api.get_notifications().text)
-                    try:
-                        self.table_notifications.clear()
-                        save_notifications(self.api, json.loads(self.api.get_notifications().text),
-                                           self.table_notifications)
-                        self.last_notifications = self.table_notifications.get_all()
-                    except:
-                        logging.error("Нарушение потока")
+                    self.table_notifications.clear()
+                    save_notifications(self.api, json.loads(self.api.get_notifications().text),
+                                       self.table_notifications)
+                    self.last_notifications = self.table_notifications.get_all()
                 assigned_tasks = get_assigned_tasks(json.loads(self.api.get_issues().text))
                 if not (assigned_tasks == self.last_assigned_tasks or assigned_tasks is None):
 
@@ -190,8 +193,7 @@ class DataBase(QThread):
                             if not if_exist:
                                 self.table_assigned_tasks.delete_by_id(last_assigned_task['id'])
                     self.last_assigned_tasks = self.table_assigned_tasks.get_all()
-                    print(self.last_assigned_tasks)
-                time.sleep(60)
+                time.sleep(5)
 
     def get_notifications(self):
         return self.last_notifications
@@ -392,10 +394,10 @@ class Api:
             logging.debug("Получение информации о задачи в репозитории")
             return response
 
-    def get_comment(self, comment):
+    def get_comment(self, repo, owner, comment):
         if self.check_connection_server():
-            response = requests.get("{}/api/v1/repos/VolodinMA/MyGitRepository/issues/comments/{}".format(self.__server,
-                                                                                                          comment))
+            response = requests.get("{}/api/v1/repos/{}/{}/issues/comments/{}".format(self.__server, owner, repo,
+                                                                                      comment))
             logging.debug("Получение комментария")
             return response
 
@@ -508,7 +510,9 @@ class TrayIcon:
             if_exist = False
             new_notifications.append(notification)
             for exist_message in self.exist_messages:
-                if exist_message['id'] == notification['id']:
+                new_notifications.append(exist_message)
+                if exist_message['id'] == notification['id'] and exist_message['message'] == notification['message'] \
+                   and exist_message['state'] == notification['state']:
                     if_exist = True
                     break
             if not if_exist:
