@@ -35,7 +35,7 @@ def show_message_in_tray(title, message, icon_path):
 
 
 def download_icon(url, name):
-    logging.debug("Скачивание аватара пользователя.")
+    logging.debug("Скачивание аватара пользователя. name - {}".format("img/{}.jpg".format(name)))
     resource = requests.get(url)
     if not (os.path.exists('img')):
         os.mkdir('img')
@@ -351,6 +351,7 @@ class Api:
     def connection_server(self):
         try:
             requests.get("{}".format(self.__server), timeout=1)
+            logging.debug("Попытка с сервером востановлена.")
             show_message_in_tray("Подключение к серверу", 'Установлено', 'img/dart.ico')
             tray_icon.set_icon('img/dart.png')
             tray_icon.constructor_menu()
@@ -361,7 +362,7 @@ class Api:
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
                requests.exceptions.InvalidSchema, requests.exceptions.MissingSchema,
                requests.exceptions.ReadTimeout, requests.exceptions.MissingSchema):
-            logging.debug("Попытка соединение с сервером.")
+            logging.debug("Неудачная попытка соединение с сервером.")
 
     def check_connection_server(self):
         try:
@@ -464,7 +465,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
         self.move(x, y)
 
     def save_settings(self):
-        logging.debug("Передача новых настроек в конфигурационный файл")
+        logging.debug("Передача новых настроек в конфигурационный файл.")
         self.edit_token.setText(self.edit_token.text())
         self.edit_server.setText(self.edit_server.text())
         if not self.tray_icon.user_logged:
@@ -478,7 +479,7 @@ class Setting(QMainWindow, setting_ui.Ui_MainWindow):
 class TrayIcon:
 
     def __init__(self, icon, app):
-        logging.debug("Создание экземпляра класса - TrayIcon")
+        logging.debug("Создание экземпляра класса - TrayIcon.")
         self.app = app
         self.tray = QSystemTrayIcon()
         self.status_animation = 0
