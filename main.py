@@ -26,6 +26,7 @@ indent_format = 24
 
 
 def show_message_in_tray(title, message, icon_path):
+    logging.debug("Вывод сообщения в трей, title - {}, message - {}".format(title, message))
     notification.notify(
         title=title,
         message=message,
@@ -240,7 +241,6 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         self.pushButton.clicked.connect(self.update_notifications)
         self.label_3.setText("Последние обновление: {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         self.setWindowTitle('Gitart')
-        self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
         self.setWindowIcon(icon)
         layout = QHBoxLayout()
@@ -262,15 +262,15 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         label.setStyleSheet('color: #6957A1;')
         layout.addWidget(label)
         layout.addWidget(QLabel("{}, ".format(notification['created_time'])))
-        label = QLabel('Состояние задачи:')
-        label.setStyleSheet('color: #6957A1;')
-        layout.addWidget(label)
-        state = "открыта, " if notification['state'] == "open" else "закрыта, "
-        layout.addWidget(QLabel(state))
         layout.addStretch()
         qv_layout.addLayout(layout)
         if not (notification['user_login'] is None):
             layout = QHBoxLayout()
+            label = QLabel('Состояние задачи:')
+            label.setStyleSheet('color: #6957A1;')
+            layout.addWidget(label)
+            state = "открыта, " if notification['state'] == "open" else "закрыта, "
+            layout.addWidget(QLabel(state))
             label = QLabel('Пользователь: ')
             label.setStyleSheet('color: #6957A1;')
             layout.addWidget(label)
