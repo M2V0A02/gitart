@@ -350,7 +350,7 @@ class Api:
 
     def connection_server(self):
         try:
-            requests.get("{}".format(self.__server), timeout=1)
+            requests.get("{}".format(self.__server))
             logging.debug("Попытка с сервером востановлена.")
             show_message_in_tray("Подключение к серверу", 'Установлено', 'img/dart.ico')
             tray_icon.set_icon('img/dart.png')
@@ -366,7 +366,7 @@ class Api:
 
     def check_connection_server(self):
         try:
-            requests.get('{}'.format(self.__server), timeout=1)
+            requests.get('{}'.format(self.__server))
             self.first_connection = False
             return True
         except(requests.exceptions.ConnectionError, requests.exceptions.InvalidURL,
@@ -638,17 +638,16 @@ data_base.start()
 
 
 def main():
-
     logging.getLogger('urllib3').setLevel(logging.WARNING)
+    current_date = datetime.datetime.today().strftime('%d-%m-%Y')
+    format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     myappid = 'myproduct'
     QtWin.setCurrentProcessExplicitAppUserModelID(myappid)
     sys.excepthook = crash_script
-    current_date = datetime.datetime.today().strftime('%d-%m-%Y')
-    format_logging = '%(asctime)s   %(levelname)-10s   %(message)s'
     if not (os.path.exists('logs')):
         os.mkdir('logs')
     logging.basicConfig(filename="logs/Debug-{}.log".format(current_date),
-                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S')
+                        level=logging.DEBUG, format=format_logging, datefmt='%H:%M:%S', force=True)
     logging.info("Запуск программы")
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('./img/dart.png'))
