@@ -395,6 +395,8 @@ class Api:
 
     def get_issues(self):
         if self.check_connection_server():
+            if self.__access_token == '':
+                return
             response = requests.get("{}/api/v1/repos/issues/search?access_token={}&assigned=true".format(self.__server,
                                                                                                      self.__access_token))
             logging.debug("Получение задач")
