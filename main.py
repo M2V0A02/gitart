@@ -241,6 +241,7 @@ class MainWindowTasks(QMainWindow, main_window_ui.Ui_MainWindow):
         self.pushButton.clicked.connect(self.update_notifications)
         self.label_3.setText("Последние обновление: {}".format(datetime.datetime.today().strftime('%H:%M:%S')))
         self.setWindowTitle('Gitart')
+        self.setFixedSize(self.width(), self.height())
         icon = QIcon('img/dart.png')
         self.setWindowIcon(icon)
         layout = QHBoxLayout()
